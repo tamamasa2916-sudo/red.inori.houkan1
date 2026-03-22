@@ -1,0 +1,44 @@
+{
+  "name": "訪問看護 保険計算 統合版",
+  "short_name": "訪問看護計算",
+  "description": "医療保険・介護保険対応の訪問看護自己負担額概算ツール（2024年度診療報酬改定対応）",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f0f4f8",
+  "theme_color": "#1a9e60",
+  "lang": "ja",
+  "categories": ["medical", "utilities"],
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "医療保険で計算",
+      "url": "./index.html#med",
+      "description": "医療保険（訪問看護・精神科）で自己負担額を計算"
+    },
+    {
+      "name": "介護保険で計算",
+      "url": "./index.html#kai",
+      "description": "介護保険で自己負担額を計算"
+    }
+  ]
+}

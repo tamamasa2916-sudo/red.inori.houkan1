@@ -1,0 +1,1725 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>訪問看護 保険計算 統合版｜医療・介護保険 自己負担額 概算ツール</title>
+<meta name="description" content="医療保険・介護保険対応の訪問看護自己負担額概算ツール（2024年度診療報酬改定対応）">
+<meta name="theme-color" content="#f0f4f8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="訪問看護計算">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+<!-- フォントはシステムフォントを使用（完全オフライン対応） -->
+<style>
+:root{
+  --bg:#f0f4f8;--sur:#ffffff;--sur2:#e8eef5;--bdr:#c8d5e3;
+  --acc:#1a9e60;--acc2:#3a6fd8;--txt:#1a2233;
+  --muted:#5a6a80;--dim:#6b7c96;
+  --red:#d93025;--ora:#c07800;--pur:#7c4daa;--cya:#2178b0;
+  --kaigo:#c07800;
+  --r:12px;
+  /* システムフォント（完全オフライン対応）
+     優先順: Noto Sans JP(Android) > Hiragino(iOS/Mac) > Yu Gothic(Win) > system-ui */
+  --font-sans:"Noto Sans JP","Hiragino Sans","Hiragino Kaku Gothic ProN",
+              "Yu Gothic UI","Yu Gothic","Meiryo",system-ui,-apple-system,sans-serif;
+  /* 等幅: SF Mono(Mac/iOS) > Consolas(Win) > monospace */
+  --font-mono:"DM Mono","SFMono-Regular","SF Mono",Consolas,"Courier New",monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans);background:var(--bg);color:var(--txt);min-height:100vh;padding:24px 16px 72px}
+
+/* ── header ── */
+header{text-align:center;margin-bottom:28px;animation:fadeDown .5s ease both}
+.badge{display:inline-block;border:1px solid var(--acc);color:var(--acc);font-size:10px;font-family:var(--font-mono);letter-spacing:.12em;padding:4px 14px;border-radius:20px;margin-bottom:10px;background:linear-gradient(135deg,#d8f5e8,#e8f8f0)}
+h1{font-size:clamp(17px,5vw,25px);font-weight:700;letter-spacing:.04em}
+h1 em{color:var(--acc);font-style:normal}
+.sub{font-size:11px;color:var(--muted);margin-top:5px;letter-spacing:.06em}
+
+.wrap{max-width:660px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+
+/* ── top-level insurance tabs ── */
+.ins-tabs{display:grid;grid-template-columns:1fr 1fr;gap:0;background:var(--sur);border:1px solid var(--bdr);border-radius:var(--r);overflow:hidden;animation:fadeUp .4s ease both}
+.ins-tab{padding:13px 8px;background:transparent;border:none;color:var(--muted);font-family:var(--font-sans);font-size:13px;font-weight:500;cursor:pointer;transition:all .2s;position:relative}
+.ins-tab::after{content:'';position:absolute;bottom:0;left:10%;width:80%;height:2px;background:transparent;transition:background .2s;border-radius:2px}
+.ins-tab.on{color:var(--txt);background:var(--sur2)}
+.ins-tab.on.med::after{background:var(--acc)}
+.ins-tab.on.kai::after{background:var(--kaigo)}
+.ins-tab .tag{font-size:9px;font-family:var(--font-mono);letter-spacing:.1em;display:block;margin-bottom:2px}
+.ins-tab.on.med .tag{color:var(--acc)}
+.ins-tab.on.kai .tag{color:var(--kaigo)}
+
+/* ── sub tabs (医療: 訪問看護 / 精神科) ── */
+.sub-tabs{display:flex;gap:6px;background:var(--sur);border:1px solid var(--bdr);border-radius:var(--r);padding:5px}
+.sub-tab{flex:1;padding:8px 4px;background:transparent;border:none;border-radius:7px;color:var(--muted);font-family:var(--font-sans);font-size:11px;cursor:pointer;transition:all .2s}
+.sub-tab.on{background:var(--sur2);color:var(--acc);font-weight:700}
+
+/* ── card ── */
+.card{background:var(--sur);border:1px solid var(--bdr);border-radius:var(--r);padding:18px}
+.ctitle{font-size:10px;font-family:var(--font-mono);letter-spacing:.14em;color:var(--acc);text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.ctitle::before{content:'';width:3px;height:13px;background:var(--acc);border-radius:2px}
+.ctitle.kai-color{color:var(--kaigo)}
+.ctitle.kai-color::before{background:var(--kaigo)}
+
+/* ── fields ── */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.f{display:flex;flex-direction:column;gap:5px}
+.flabel{font-size:11px;color:var(--muted);letter-spacing:.04em}
+select,input[type=number]{background:var(--sur2);border:1px solid var(--bdr);border-radius:8px;color:var(--txt);font-family:var(--font-sans);font-size:13px;padding:9px 11px;outline:none;transition:border-color .2s,box-shadow .2s;width:100%;-webkit-appearance:none}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%235a6a80' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px;cursor:pointer}
+select:focus,input[type=number]:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(26,158,96,.2)}
+.kai-focus select:focus,.kai-focus input[type=number]:focus{border-color:var(--kaigo);box-shadow:0 0 0 3px rgba(192,120,0,.2)}
+
+.sdiv{font-size:10px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase;margin:16px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--bdr)}
+
+/* ── toggle ── */
+.tog-list{display:flex;flex-direction:column;gap:8px}
+.tog-row{display:flex;align-items:center;justify-content:space-between;background:var(--sur2);border:1px solid var(--bdr);border-radius:8px;padding:10px 13px;cursor:pointer;user-select:none;transition:border-color .2s,background .2s}
+.tog-row:hover{border-color:var(--acc)}
+.tog-row:focus{outline:2px solid var(--acc);outline-offset:2px}
+.tog-row.kai:focus{outline-color:var(--kaigo)}
+.tog-row.active{border-color:var(--acc);background:#d8f5e8}
+.tog-row.kai:hover{border-color:var(--kaigo)}
+.tog-row.kai.active{border-color:var(--kaigo);background:#fef3d8}
+.tog-text{font-size:12px;color:var(--txt)}
+.tog-text small{display:block;font-size:10px;color:var(--muted);margin-top:2px}
+.pill{width:38px;height:22px;background:var(--bdr);border-radius:11px;position:relative;transition:background .25s;flex-shrink:0;pointer-events:none}
+.pill::after{content:'';position:absolute;width:16px;height:16px;background:#fff;border-radius:50%;top:3px;left:3px;transition:transform .25s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.tog-row.active .pill{background:var(--acc)}
+.tog-row.active .pill::after{transform:translateX(16px)}
+.tog-row.kai.active .pill{background:var(--kaigo)}
+
+/* ── num grid ── */
+.ngrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.nf{display:flex;flex-direction:column;gap:5px}
+.nf .flabel{display:flex;align-items:center;gap:5px}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block;flex-shrink:0}
+
+/* ── calc btn ── */
+.cbtn{width:100%;padding:15px;background:var(--acc);color:#ffffff;font-family:var(--font-sans);font-size:15px;font-weight:700;letter-spacing:.08em;border:none;border-radius:var(--r);cursor:pointer;transition:transform .15s,box-shadow .2s;box-shadow:0 4px 20px rgba(26,158,96,.25)}
+.cbtn:hover{background:#157a4a;box-shadow:0 6px 28px rgba(26,158,96,.4);transform:translateY(-1px)}
+.cbtn.kai-btn{background:var(--kaigo);color:#ffffff;box-shadow:0 4px 20px rgba(192,120,0,.25)}
+.cbtn.kai-btn:hover{background:#a06200;box-shadow:0 6px 28px rgba(192,120,0,.4);transform:translateY(-1px)}
+.cbtn:active{transform:translateY(1px)}
+
+/* ── result ── */
+.rcard{background:linear-gradient(135deg,#e8f8f0,#e8f0fb);border:1px solid rgba(26,158,96,.3);border-radius:var(--r);padding:22px 18px;animation:fadeUp .4s ease .3s both;transition:border-color .3s,background .3s}
+.rcard.kai-mode{background:linear-gradient(135deg,#fef3d8,#fef8ec);border-color:rgba(192,120,0,.35)}
+.rlabel{font-size:10px;font-family:var(--font-mono);color:var(--acc);letter-spacing:.14em;margin-bottom:8px}
+.rcard.kai-mode .rlabel{color:var(--kaigo)}
+.rval{font-size:clamp(28px,8vw,42px);font-family:var(--font-mono);font-weight:500;color:var(--txt);letter-spacing:-.01em}
+.rval em{color:var(--acc);font-style:normal}
+.rcard.kai-mode .rval em{color:var(--kaigo)}
+.rnote{font-size:10px;color:var(--dim);margin-top:7px}
+.bdown{margin-top:14px;padding-top:14px;border-top:1px solid var(--bdr);display:none;flex-direction:column;gap:5px}
+.bdown.show{display:flex}
+.bsec{font-size:9px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase;margin-top:8px}
+.brow{display:flex;justify-content:space-between;font-size:11px;color:var(--muted)}
+.brow.tot{border-top:1px solid var(--bdr);padding-top:8px;margin-top:4px;color:var(--txt);font-weight:500}
+.brow .v{font-family:var(--font-mono);color:var(--txt);font-size:11px}
+.brow.minus .v{color:var(--red)}
+.brow.zero{opacity:.3}
+
+/* ── panels ── */
+.panel{display:none}.panel.on{display:flex;flex-direction:column;gap:14px}
+
+/* ── 介護保険 要介護度バッジ ── */
+.care-badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.care-badge{padding:5px 10px;border-radius:6px;font-size:11px;background:var(--sur2);border:1px solid var(--bdr);color:var(--muted);cursor:pointer;transition:all .2s;user-select:none}
+.care-badge:focus{outline:2px solid var(--kaigo);outline-offset:2px}
+.care-badge.on{background:#fef3d8;border-color:var(--kaigo);color:var(--kaigo);font-weight:700}
+
+/* ── toggle disabled（要支援非対応） ── */
+.tog-row.disabled{opacity:.35;cursor:not-allowed;pointer-events:none}
+.tog-row.disabled .tog-text::after{content:' ／ 要支援非対応';font-size:9px;color:var(--red);margin-left:4px;font-weight:500}
+
+/* ── 入力バリデーション ── */
+input[type=number].err,input[type=text].err{border-color:var(--red) !important;box-shadow:0 0 0 3px rgba(245,101,101,.15) !important}
+.verr{font-size:10px;color:var(--red);margin-top:3px;display:none}
+.verr.show{display:block}
+
+/* ── 利用者情報・テキスト入力 ── */
+input[type=text]{background:var(--sur2);border:1px solid var(--bdr);border-radius:8px;color:var(--txt);font-family:var(--font-sans);font-size:13px;padding:9px 11px;outline:none;transition:border-color .2s,box-shadow .2s;width:100%}
+input[type=text]:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(26,158,96,.2)}
+input[type=text]::placeholder{color:var(--dim)}
+
+/* ── 免責カード ── */
+.disclaimer{background:#f5f7fa;border:1px solid #dde3ec;border-radius:var(--r);padding:14px 16px;font-size:10px;color:var(--dim);line-height:1.7;letter-spacing:.03em}
+.disclaimer strong{color:var(--muted);display:block;margin-bottom:4px;font-size:10px;letter-spacing:.1em}
+
+/* ── PDF ボタン ── */
+.pdf-btn{display:none;width:100%;padding:13px;background:transparent;border:1px solid var(--acc);color:var(--acc);font-family:var(--font-sans);font-size:13px;font-weight:700;letter-spacing:.08em;border-radius:var(--r);cursor:pointer;transition:all .2s;margin-top:10px}
+.pdf-btn:hover{background:rgba(26,158,96,.1);box-shadow:0 0 16px rgba(26,158,96,.2)}
+.pdf-btn.kai-pdf{border-color:var(--kaigo);color:var(--kaigo)}
+.pdf-btn.kai-pdf:hover{background:rgba(192,120,0,.1)}
+.pdf-btn.show{display:block}
+
+/* ── PWA インストールバナー ── */
+#pwa-banner{display:none;align-items:center;justify-content:space-between;gap:12px;background:linear-gradient(135deg,#1a9e60,#157a4a);color:#fff;border-radius:var(--r);padding:14px 16px;animation:fadeDown .4s ease both;box-shadow:0 4px 20px rgba(26,158,96,.3)}
+#pwa-banner.show{display:flex}
+.pwa-icon{font-size:26px;flex-shrink:0}
+.pwa-text{flex:1;min-width:0}
+.pwa-text strong{display:block;font-size:13px;font-weight:700;letter-spacing:.04em}
+.pwa-text span{display:block;font-size:10px;opacity:.85;margin-top:2px;letter-spacing:.02em}
+.pwa-install-btn{background:#fff;color:#1a9e60;border:none;border-radius:8px;padding:8px 16px;font-family:var(--font-sans);font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:all .2s}
+.pwa-install-btn:hover{background:#e8f8f0;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.pwa-close{background:transparent;border:none;color:rgba(255,255,255,.7);font-size:18px;cursor:pointer;padding:4px;line-height:1;flex-shrink:0}
+.pwa-close:hover{color:#fff}
+
+/* ── オフライン通知 ── */
+#offline-bar{display:none;background:var(--red);color:#fff;font-size:11px;text-align:center;padding:6px;letter-spacing:.04em;position:fixed;top:0;left:0;right:0;z-index:9999}
+#offline-bar.show{display:block}
+
+/* ── 印刷（PDF出力）専用スタイル ── */
+@media print{
+  @page{size:A4 portrait;margin:15mm 14mm 15mm 14mm}
+  body{background:#fff !important;color:#111 !important;padding:0 !important;font-size:11px}
+  .ins-tabs,.sub-tabs,.card,.cbtn,.pdf-btn,.disclaimer,header .badge,
+  #ins-med,#ins-kai{display:none !important}
+  header{margin-bottom:8px;animation:none}
+  h1{font-size:16px;color:#111 !important}
+  h1 em{color:#1a7a4a !important}
+  .sub{color:#555 !important}
+  .wrap{max-width:100%;gap:0}
+  #pdf-sheet{display:block !important}
+  .ps-patient{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;margin-bottom:8px;padding:6px 8px;border:1px solid #ddd;border-radius:4px;background:#f9f9f9}
+  .ps-patient-row{font-size:9px;color:#444;display:flex;gap:6px}
+  .ps-patient-row span:first-child{color:#888;min-width:64px}
+  .ps-patient-row span:last-child{font-weight:600;color:#111}
+  .ps-header{border-bottom:2px solid #1a7a4a;padding-bottom:6px;margin-bottom:10px}
+  .ps-title{font-size:14px;font-weight:700;color:#111}
+  .ps-title span{color:#1a7a4a}
+  .ps-meta{font-size:9px;color:#666;margin-top:2px}
+  .ps-body{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}
+  .ps-col{}
+  .ps-sec{font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:#888;margin:8px 0 3px;padding-bottom:2px;border-bottom:1px solid #ddd}
+  .ps-row{display:flex;justify-content:space-between;font-size:9.5px;color:#333;padding:2px 0;border-bottom:1px solid #f0f0f0}
+  .ps-row.zero{color:#bbb}
+  .ps-row.minus .pv{color:#c0392b}
+  .pv{font-family:var(--font-mono);font-size:9.5px}
+  .ps-total{grid-column:1/-1;margin-top:10px;border-top:2px solid #1a7a4a;padding-top:8px;display:flex;justify-content:space-between;align-items:baseline}
+  .ps-total-label{font-size:11px;font-weight:700;color:#111}
+  .ps-total-val{font-size:22px;font-weight:700;font-family:var(--font-mono);color:#1a7a4a}
+  .ps-total-val.kai{color:#b07800}
+  .ps-subnote{grid-column:1/-1;font-size:8.5px;color:#666;margin-top:4px}
+  .ps-limit{grid-column:1/-1;margin-top:6px;padding:6px 8px;border:1px solid #e0c070;border-radius:4px;background:#fffbe6;font-size:9px;color:#7a6000}
+  .ps-disc{grid-column:1/-1;margin-top:12px;padding:7px 10px;border:1px solid #ddd;border-radius:4px;background:#f8f8f8;font-size:8px;color:#666;line-height:1.6}
+  .ps-disc strong{display:block;font-size:8px;color:#444;margin-bottom:2px}
+  .ps-footer{grid-column:1/-1;margin-top:8px;text-align:right;font-size:8px;color:#aaa}
+}
+#pdf-sheet{display:none}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeDown{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pop{0%{transform:scale(1)}50%{transform:scale(1.05)}100%{transform:scale(1)}}
+.pop{animation:pop .3s ease}
+
+/* ── 保存ボタン ── */
+.save-btn{display:none;width:100%;padding:13px;background:transparent;border:1px solid var(--acc2);color:var(--acc2);font-family:var(--font-sans);font-size:13px;font-weight:700;letter-spacing:.08em;border-radius:var(--r);cursor:pointer;transition:all .2s;margin-top:8px}
+.save-btn:hover{background:rgba(58,111,216,.1)}
+.save-btn.show{display:block}
+
+/* ── 履歴カード ── */
+.hist-card{background:var(--sur);border:1px solid var(--bdr);border-radius:var(--r);padding:16px 18px;animation:fadeUp .4s ease both}
+.hist-title{font-size:10px;font-family:var(--font-mono);letter-spacing:.14em;color:var(--acc2);display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.hist-title::before{content:'';width:3px;height:13px;background:var(--acc2);border-radius:2px}
+.hist-empty{font-size:12px;color:var(--dim);text-align:center;padding:12px 0}
+.hist-list{display:flex;flex-direction:column;gap:8px}
+.hist-item{display:flex;align-items:center;gap:10px;background:var(--sur2);border:1px solid var(--bdr);border-radius:8px;padding:10px 12px;cursor:pointer;transition:border-color .2s,background .2s}
+.hist-item:hover{border-color:var(--acc2);background:#eef2fc}
+.hist-item:focus{outline:2px solid var(--acc2);outline-offset:2px}
+.hist-item.kai-hist:hover{border-color:var(--kaigo);background:#fef8ec}
+.hist-item.kai-hist:focus{outline-color:var(--kaigo)}
+.hist-body{flex:1;min-width:0}
+.hist-meta{font-size:10px;color:var(--dim);letter-spacing:.04em;margin-bottom:3px}
+.hist-copay{font-size:18px;font-family:var(--font-mono);font-weight:500;color:var(--txt)}
+.hist-copay em{color:var(--acc2);font-style:normal;font-size:13px;margin-left:4px}
+.hist-item.kai-hist .hist-copay em{color:var(--kaigo)}
+.hist-del{background:transparent;border:none;color:var(--dim);font-size:16px;cursor:pointer;padding:4px 6px;border-radius:4px;line-height:1;flex-shrink:0;transition:color .2s}
+.hist-del:hover{color:var(--red)}
+.hist-del:focus{outline:2px solid var(--red);outline-offset:2px}
+@media print{.hist-card,.save-btn{display:none!important}}
+
+/* ── SW更新トースト ── */
+#sw-toast{display:none;position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--txt);color:#fff;font-size:12px;padding:10px 16px;border-radius:20px;z-index:9998;white-space:nowrap;gap:12px;align-items:center;box-shadow:0 4px 16px rgba(0,0,0,.25)}
+#sw-toast.show{display:flex}
+#sw-toast button{background:#1a9e60;border:none;color:#fff;font-size:11px;font-family:var(--font-sans);font-weight:700;padding:4px 10px;border-radius:10px;cursor:pointer}
+</style>
+</head>
+<body>
+
+<!-- オフライン通知バー -->
+<div id="offline-bar">📶 オフライン中 — キャッシュ済みデータで動作しています</div>
+
+<!-- SW更新トースト -->
+<div id="sw-toast" role="status" aria-live="polite">
+  <span>新しいバージョンがあります</span>
+  <button onclick="swUpdate()">更新する</button>
+</div>
+
+<header>
+  <div class="badge">NURSING CARE CALC — UNIFIED</div>
+  <h1>訪問看護 <em>保険計算</em> 統合版</h1>
+  <p class="sub">医療保険 ／ 介護保険 対応 ・ 2024年度診療報酬改定対応</p>
+</header>
+
+<main class="wrap" id="main-content">
+
+  <!-- ══ PWAインストールバナー ══ -->
+  <div id="pwa-banner">
+    <div class="pwa-icon">📲</div>
+    <div class="pwa-text">
+      <strong>ホーム画面に追加</strong>
+      <span>オフラインでも使えるアプリとしてインストール</span>
+    </div>
+    <button class="pwa-install-btn" id="pwa-install-btn">インストール</button>
+    <button class="pwa-close" id="pwa-close-btn" aria-label="閉じる">×</button>
+  </div>
+
+  <!-- ══ 利用者・事業所情報 ══ -->
+  <div class="card">
+    <div class="ctitle">利用者・事業所情報（PDF出力用）</div>
+    <div class="grid2">
+      <div class="f">
+        <label class="flabel" for="pt-name">利用者名</label>
+            <input type="text" id="pt-name" placeholder="例）山田 花子" maxlength="30">
+      </div>
+      <div class="f">
+        <label class="flabel" for="pt-office">事業所名</label>
+            <input type="text" id="pt-office" placeholder="例）〇〇訪問看護ステーション" maxlength="40">
+      </div>
+      <div class="f">
+        <label class="flabel" for="pt-dob">生年月日 / 年齢</label>
+            <input type="text" id="pt-dob" placeholder="例）1945年3月1日（80歳）" maxlength="30">
+      </div>
+      <div class="f">
+        <label class="flabel" for="pt-month">対象年月</label>
+            <input type="text" id="pt-month" placeholder="例）2025年4月分" maxlength="20">
+      </div>
+    </div>
+    <p style="font-size:10px;color:var(--dim);margin-top:10px">※ 入力は任意です。PDF計算書のヘッダーに反映されます。</p>
+  </div>
+
+  <!-- ══ 保険種別タブ ══ -->
+  <div class="ins-tabs" role="tablist" aria-label="保険種別">
+    <button class="ins-tab med on" role="tab" aria-selected="true" aria-controls="ins-med" onclick="switchIns('med',this)">
+      <span class="tag">MEDICAL</span>医療保険
+    </button>
+    <button class="ins-tab kai" role="tab" aria-selected="false" aria-controls="ins-kai" onclick="switchIns('kai',this)">
+      <span class="tag">NURSING CARE</span>介護保険
+    </button>
+  </div>
+
+  <!-- ════════════ 医療保険 ════════════ -->
+  <div id="ins-med" class="panel on">
+
+    <div class="sub-tabs">
+      <button class="sub-tab on" onclick="switchSub('k',this)">訪問看護</button>
+      <button class="sub-tab"    onclick="switchSub('s',this)">精神科訪問看護</button>
+    </div>
+
+    <!-- 訪問看護 -->
+    <div id="p-k" class="panel on">
+      <div class="card">
+        <div class="ctitle">基本設定</div>
+        <div class="grid2">
+          <div class="f"><label class="flabel" for="k-day">週区分</label>
+            <select id="k-day"><option value="w3">週3日まで</option><option value="w4">週4日以上</option></select></div>
+          <div class="f"><label class="flabel" for="k-time">訪問時間</label>
+            <select id="k-time"><option value="30u" selected>30分未満</option><option value="30o">30〜60分</option><option value="60o">60〜90分</option></select></div>
+          <div class="f"><label class="flabel" for="k-vc">訪問回数（月）</label>
+            <input type="number" id="k-vc" value="4" min="1" max="99" aria-describedby="k-vc-err" aria-required="true">
+            <span class="verr" id="k-vc-err" role="alert"></span></div>
+          <div class="f"><label class="flabel" for="k-cp">負担割合</label>
+            <select id="k-cp"><option value="0.1" selected>1割</option><option value="0.2">2割</option><option value="0.3">3割</option></select></div>
+          <div class="f" style="grid-column:1/-1"><label class="flabel" for="k-kanri">訪問看護管理療養費（月初日・事業所区分）</label>
+            <select id="k-kanri">
+              <option value="7670">機能強化型以外 7,670点</option>
+              <option value="8700">機能強化型Ⅲ 8,700点</option>
+              <option value="10030">機能強化型Ⅱ 10,030点</option>
+              <option value="13230">機能強化型Ⅰ 13,230点</option>
+              <option value="0">算定なし（月初日以外／同一月2ステーション目等）</option>
+            </select></div>
+          <div class="f"><label class="flabel" for="k-kanri2">2日目以降 管理療養費区分</label>
+            <select id="k-kanri2">
+              <option value="3000">管理療養費Ⅰ 3,000点/日</option>
+              <option value="2500">管理療養費Ⅱ 2,500点/日</option>
+              <option value="0">算定なし</option>
+            </select></div>
+        </div>
+        <div class="sdiv">乳幼児加算（6歳未満・回数）</div>
+        <div class="ngrid">
+          <div class="nf"><span class="flabel"><span class="dot" style="background:var(--acc)"></span>通常区分 ＋1,300点/回</span><input type="number" id="k-child" value="0" min="0"></div>
+          <div class="nf"><span class="flabel"><span class="dot" style="background:var(--pur)"></span>重症児等区分 ＋1,800点/回<br><small style="font-size:9px;color:var(--dim)">超重症児・別表7・8該当</small></span><input type="number" id="k-child2" value="0" min="0"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="ctitle">緊急訪問看護加算（回数）</div>
+        <div class="ngrid">
+          <div class="nf"><span class="flabel"><span class="dot" style="background:var(--red)"></span>緊急訪問 イ（月14日目まで） ＋2,650点</span><input type="number" id="k-kin" value="0" min="0"></div>
+          <div class="nf"><span class="flabel"><span class="dot" style="background:var(--ora)"></span>緊急訪問 ロ（月15日目以降） ＋2,000点</span><input type="number" id="k-kin2" value="0" min="0"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="ctitle">時間外加算（回数）</div>
+        <div class="ngrid">
+          <div class="nf"><span class="flabel"><span class="dot" style="background:var(--ora)"></span>夜間訪問 ＋2,100点</span><input type="number" id="k-yak" value="0" min="0"></div>
+          <div class="nf"><span class="flabel"><span class="dot" style="background:var(--acc2)"></span>深夜訪問 ＋4,200点</span><input type="number" id="k-shi" value="0" min="0"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="ctitle">複数名・長時間加算（回数）</div>
+        <div class="ngrid">
+          <div class="nf"><span class="flabel"><span class="dot" style="background:var(--acc)"></span>複数名（看護師） ＋3,000点</span><input type="number" id="k-fkK" value="0" min="0"></div>
+          <div class="nf"><span class="flabel"><span class="dot" style="background:var(--cya)"></span>複数名（補助者） ＋1,000点</span><input type="number" id="k-fkJ" value="0" min="0"></div>
+          <div class="nf"><span class="flabel"><span class="dot" style="background:var(--pur)"></span>長時間（90分超） ＋5,200点</span><input type="number" id="k-cho" value="0" min="0"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="ctitle">管理・情報提供加算（月単位）</div>
+        <div class="tog-list">
+          <div class="tog-row" data-key="k-toku1"   onclick="tog(this)"><div class="tog-text">特別管理加算Ⅰ<small>気管カニューレ・留置カテーテル等 ＋500点（月1回）</small></div><div class="pill"></div></div>
+          <div class="tog-row" data-key="k-toku2"   onclick="tog(this)"><div class="tog-text">特別管理加算Ⅱ<small>週3日以上の点滴注射等 ＋250点（月1回）</small></div><div class="pill"></div></div>
+          <div class="tog-row" role="switch" aria-checked="false" tabindex="0" data-key="k-senmon1" onclick="tog(this)" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();tog(this)}"><div class="tog-text">専門管理加算Ⅰ<small>緩和ケア・褥瘡ケア等専門研修修了者 ＋2,500点（月1回）</small></div><div class="pill"></div></div>
+          <div class="tog-row" role="switch" aria-checked="false" tabindex="0" data-key="k-senmon2" onclick="tog(this)" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();tog(this)}"><div class="tog-text">専門管理加算Ⅱ<small>特定行為研修修了者 ＋1,000点（月1回）</small></div><div class="pill"></div></div>
+          <div class="tog-row" data-key="k-taiin"   onclick="tog(this)"><div class="tog-text">退院時共同指導加算<small>＋600点（入院中1回）</small></div><div class="pill"></div></div>
+          <div class="tog-row" role="switch" aria-checked="false" tabindex="0" data-key="k-taiinsp" onclick="tog(this)" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();tog(this)}"><div class="tog-text">特別管理指導加算<small>退院時共同指導加算への上乗せ（特別管理加算対象者）＋2,000点（1回）</small></div><div class="pill"></div></div>
+          <div class="tog-row" role="switch" aria-checked="false" tabindex="0" data-key="k-taishin" onclick="tog(this)" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();tog(this)}"><div class="tog-text">退院支援指導加算<small>退院日に在宅指導を実施 ＋6,000点（1回）</small></div><div class="pill"></div></div>
+          <div class="tog-row" data-key="k-renkei"  onclick="tog(this)"><div class="tog-text">在宅患者連携指導加算<small>医療関係職種間で診療情報共有・指導 ＋3,000点（月1回）</small></div><div class="pill"></div></div>
+          <div class="nf" style="grid-column:1/-1;margin:4px 0"><span class="flabel"><span class="dot" style="background:var(--acc2)"></span>在宅患者緊急時等カンファレンス加算 ＋200点/回（月2回まで）</span><input type="number" id="k-conf" value="0" min="0" max="2" style="max-width:80px"></div>
+          <div class="tog-row" role="switch" aria-checked="false" tabindex="0" data-key="k-kaigorenkei" onclick="tog(this)" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();tog(this)}"><div class="tog-text">看護・介護職員連携強化加算<small>介護職員へのたんの吸引等支援 ＋250点（月1回）</small></div><div class="pill"></div></div>
+          <div class="tog-row" data-key="k-joho"    onclick="tog(this)"><div class="tog-text">訪問看護情報提供療養費<small>＋1,500点（月1回）</small></div><div class="pill"></div></div>
+          <div class="tog-row" data-key="k-shok"    onclick="tog(this)"><div class="tog-text">初回加算<small>＋3,000点（初月1回）</small></div><div class="pill"></div></div>
+          <div class="tog-row" data-key="k-ninch"   onclick="tog(this)"><div class="tog-text">認知症専門管理加算<small>＋250点（月1回）</small></div><div class="pill"></div></div>
+          <div class="tog-row" data-key="k-dx"      onclick="tog(this)"><div class="tog-text">訪問看護医療DX情報活用加算<small>オンライン資格確認等活用 ＋5点（月1回）</small></div><div class="pill"></div></div>
+          <div class="tog-row" data-key="k-24h-i"   onclick="tog(this)"><div class="tog-text">24時間対応体制加算 イ<small>負担軽減体制あり ＋6,800点（月1回）</small></div><div class="pill"></div></div>
+          <div class="tog-row" data-key="k-24h-r"   onclick="tog(this)"><div class="tog-text">24時間対応体制加算 ロ<small>負担軽減体制なし ＋6,520点（月1回）</small></div><div class="pill"></div></div>
+          <div class="tog-row" role="switch" aria-checked="false" tabindex="0" data-key="k-terminal-h" onclick="tog(this)" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();tog(this)}"><div class="tog-text">ターミナルケア療養費（在宅死亡）<small>＋25,000点（死亡月1回）</small></div><div class="pill"></div></div>
+          <div class="tog-row" role="switch" aria-checked="false" tabindex="0" data-key="k-terminal-i" onclick="tog(this)" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();tog(this)}"><div class="tog-text">ターミナルケア療養費（施設死亡）<small>＋10,000点（死亡月1回）</small></div><div class="pill"></div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="ctitle">減算・体制未整備</div>
+        <div class="tog-list">
+          <div class="tog-row" role="switch" aria-checked="false" tabindex="0" data-key="k-g1" onclick="tog(this)" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();tog(this)}"><div class="tog-text">体制強化加算 未届出<small>▲50点/回</small></div><div class="pill"></div></div>
+          <div class="tog-row" role="switch" aria-checked="false" tabindex="0" data-key="k-g2" onclick="tog(this)" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();tog(this)}"><div class="tog-text">業務継続計画未策定<small>▲10点/回</small></div><div class="pill"></div></div>
+          <div class="tog-row" role="switch" aria-checked="false" tabindex="0" data-key="k-g3" onclick="tog(this)" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();tog(this)}"><div class="tog-text">虐待防止措置未実施<small>▲5点/回</small></div><div class="pill"></div></div>
+        </div>
+      </div>
+
+      <p style="font-size:10px;color:var(--dim);margin-bottom:8px">※ 医療保険は 1点＝10円 で自己負担額を算出します。</p>
+      <button class="cbtn" onclick="calcK()">計 算 す る</button>
+    </div>
+
+    <!-- 精神科 -->
+    <div id="p-s" class="panel">
+      <div class="card">
+        <div class="ctitle">基本設定</div>
+        <div class="grid2">
+          <div class="f"><label class="flabel" for="s-day">週区分</label>
+            <select id="s-day"><option value="w3">週3日まで</option><option value="w4">週4日以上</option></select></div>
+          <div class="f"><label class="flabel" for="s-time">訪問時間</label>
+            <select id="s-time"><option value="30u" selected>30分未満</option><option value="30o">30〜60分</option><option value="60o">60〜90分</option></select></div>
+          <div class="f"><label class="flabel" for="s-vc">訪問回数（月）</label>
+            <input type="number" id="s-vc" value="4" min="1" max="99" aria-describedby="s-vc-err" aria-required="true">
+            <span class="verr" id="s-vc-err" role="alert"></span></div>
+          <div class="f"><label class="flabel" for="s-cp">負担割合</label>
+            <select id="s-cp"><option value="0.1" selected>1割</option><option value="0.2">2割</option><option value="0.3">3割</option></select></div>
+          <div class="f" style="grid-column:1/-1"><label class="flabel" for="s-kanri">訪問看護管理療養費（月初日・事業所区分）</label>
+            <select id="s-kanri">
+              <option value="7670">機能強化型以外 7,670点</option>
+              <option value="8700">機能強化型Ⅲ 8,700点</option>
+              <option value="10030">機能強化型Ⅱ 10,030点</option>
+              <option value="13230">機能強化型Ⅰ 13,230点</option>
+              <option value="0">算定なし（月初日以外／同一月2ステーション目等）</option>
+            </select></div>
+          <div class="f"><label class="flabel" for="s-kanri2">2日目以降 管理療養費区分</label>
+            <select id="s-kanri2">
+              <option value="3000">管理療養費Ⅰ 3,000点/日</option>
+              <option value="2500">管理療養費Ⅱ 2,500点/日</option>
+              <option value="0">算定なし</option>
+            </select></div>
+        </div>
+        <div class="sdiv">乳幼児加算（6歳未満・回数）</div>
+        <div class="ngrid">
+          <div class="nf"><span class="flabel"><span class="dot" style="background:var(--acc)"></span>通常区分 ＋1,300点/回</span><input type="number" id="s-child" value="0" min="0"></div>
+          <div class="nf"><span class="flabel"><span class="dot" style="background:var(--pur)"></span>重症児等区分 ＋1,800点/回<br><small style="font-size:9px;color:var(--dim)">超重症児・別表7・8該当</small></span><input type="number" id="s-child2" value="0" min="0"></div>
+        </div>
+        <div class="sdiv">利用者属性（月単位）</div>
+        <div class="tog-list">
+          <div class="tog-row" data-key="s-24h-i"      onclick="tog(this)"><div class="tog-text">24時間対応体制加算 イ<small>負担軽減体制あり ＋6,800点（月1回）</small></div><div class="pill"></div></div>
+          <div class="tog-row" data-key="s-24h-r"      onclick="tog(this)"><div class="tog-text">24時間対応体制加算 ロ<small>負担軽減体制なし ＋6,520点（月1回）</small></div><div class="pill"></div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="ctitle">緊急訪問看護加算（回数）</div>
+        <div class="ngrid">
+          <div class="nf"><span class="flabel"><span class="dot" style="background:var(--red)"></span>緊急訪問 イ（月14日目まで） ＋2,650点</span><input type="number" id="s-kin" value="0" min="0"></div>
+          <div class="nf"><span class="flabel"><span class="dot" style="background:var(--red)"></span>緊急訪問 ロ（月15日目以降） ＋2,000点</span><input type="number" id="s-kin2" value="0" min="0"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="ctitle">時間外加算（回数）</div>
+        <div class="ngrid">
+          <div class="nf"><span class="flabel"><span class="dot" style="background:var(--ora)"></span>夜間訪問 ＋2,100点</span><input type="number" id="s-yak" value="0" min="0"></div>
+          <div class="nf"><span class="flabel"><span class="dot" style="background:var(--acc2)"></span>深夜訪問 ＋4,200点</span><input type="number" id="s-shi" value="0" min="0"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="ctitle">精神科固有加算（回数）</div>
+        <div class="ngrid">
+          <div class="nf"><span class="flabel"><span class="dot" style="background:var(--pur)"></span>複数名（看護師） ＋3,000点</span><input type="number" id="s-fkK" value="0" min="0"></div>
+          <div class="nf"><span class="flabel"><span class="dot" style="background:var(--cya)"></span>複数名（補助者） ＋1,000点</span><input type="number" id="s-fkJ" value="0" min="0"></div>
+          <div class="nf"><span class="flabel"><span class="dot" style="background:var(--acc)"></span>長時間（90分超） ＋5,200点</span><input type="number" id="s-cho" value="0" min="0"></div>
+        </div>
+        <div class="sdiv">月単位加算</div>
+        <div class="tog-list">
+          <div class="tog-row" data-key="s-shok"     onclick="tog(this)"><div class="tog-text">初回加算<small>＋3,000点（初月1回）</small></div><div class="pill"></div></div>
+          <div class="tog-row" data-key="s-taiin"    onclick="tog(this)"><div class="tog-text">退院時共同指導加算<small>＋600点（1回）</small></div><div class="pill"></div></div>
+          <div class="tog-row" data-key="s-taiinsp"  onclick="tog(this)"><div class="tog-text">特別管理指導加算<small>退院時共同指導加算への上乗せ ＋2,000点（1回）</small></div><div class="pill"></div></div>
+          <div class="tog-row" data-key="s-taishin"  onclick="tog(this)"><div class="tog-text">退院支援指導加算<small>退院日に在宅指導を実施 ＋6,000点（1回）</small></div><div class="pill"></div></div>
+          <div class="tog-row" data-key="s-toku1"    onclick="tog(this)"><div class="tog-text">特別管理加算Ⅰ<small>気管カニューレ等 ＋500点（月1回）</small></div><div class="pill"></div></div>
+          <div class="tog-row" data-key="s-toku2"    onclick="tog(this)"><div class="tog-text">特別管理加算Ⅱ<small>週3日以上の点滴注射等 ＋250点（月1回）</small></div><div class="pill"></div></div>
+          <div class="tog-row" data-key="s-stoku"    onclick="tog(this)"><div class="tog-text">精神科特別管理加算<small>＋250点（月1回）</small></div><div class="pill"></div></div>
+          <div class="tog-row" data-key="s-senmon1"  onclick="tog(this)"><div class="tog-text">専門管理加算Ⅰ<small>緩和ケア・褥瘡ケア等専門研修修了者 ＋2,500点（月1回）</small></div><div class="pill"></div></div>
+          <div class="tog-row" data-key="s-senmon2"  onclick="tog(this)"><div class="tog-text">専門管理加算Ⅱ<small>特定行為研修修了者 ＋1,000点（月1回）</small></div><div class="pill"></div></div>
+          <div class="tog-row" data-key="s-renkei"   onclick="tog(this)"><div class="tog-text">在宅患者連携指導加算<small>医療関係職種間で診療情報共有・指導 ＋3,000点（月1回）</small></div><div class="pill"></div></div>
+          <div class="nf" style="grid-column:1/-1;margin:4px 0"><span class="flabel"><span class="dot" style="background:var(--acc2)"></span>在宅患者緊急時等カンファレンス加算 ＋200点/回（月2回まで）</span><input type="number" id="s-conf" value="0" min="0" max="2" style="max-width:80px"></div>
+          <div class="tog-row" role="switch" aria-checked="false" tabindex="0" data-key="s-kaigorenkei" onclick="tog(this)" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();tog(this)}"><div class="tog-text">看護・介護職員連携強化加算<small>介護職員へのたんの吸引等支援 ＋250点（月1回）</small></div><div class="pill"></div></div>
+          <div class="tog-row" role="switch" aria-checked="false" tabindex="0" data-key="s-jyusho-i" onclick="tog(this)" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();tog(this)}"><div class="tog-text">精神科重症患者支援管理連携加算 イ<small>措置入院歴等＋GAF40以下の重症者 ＋840点（月1回）</small></div><div class="pill"></div></div>
+          <div class="tog-row" role="switch" aria-checked="false" tabindex="0" data-key="s-jyusho-r" onclick="tog(this)" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();tog(this)}"><div class="tog-text">精神科重症患者支援管理連携加算 ロ<small>ひきこもり・未受診等 ＋580点（月1回）</small></div><div class="pill"></div></div>
+          <div class="tog-row" data-key="s-joho"     onclick="tog(this)"><div class="tog-text">訪問看護情報提供療養費<small>＋1,500点（月1回）</small></div><div class="pill"></div></div>
+          <div class="tog-row" data-key="s-dx"       onclick="tog(this)"><div class="tog-text">訪問看護医療DX情報活用加算<small>オンライン資格確認等活用 ＋5点（月1回）</small></div><div class="pill"></div></div>
+          <div class="tog-row" role="switch" aria-checked="false" tabindex="0" data-key="s-terminal-h" onclick="tog(this)" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();tog(this)}"><div class="tog-text">ターミナルケア療養費（在宅死亡）<small>＋25,000点（死亡月1回）</small></div><div class="pill"></div></div>
+          <div class="tog-row" role="switch" aria-checked="false" tabindex="0" data-key="s-terminal-i" onclick="tog(this)" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();tog(this)}"><div class="tog-text">ターミナルケア療養費（施設死亡）<small>＋10,000点（死亡月1回）</small></div><div class="pill"></div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="ctitle">減算</div>
+        <div class="tog-list">
+          <div class="tog-row" role="switch" aria-checked="false" tabindex="0" data-key="s-g1" onclick="tog(this)" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();tog(this)}"><div class="tog-text">体制強化加算 未届出<small>▲50点/回</small></div><div class="pill"></div></div>
+          <div class="tog-row" role="switch" aria-checked="false" tabindex="0" data-key="s-g2" onclick="tog(this)" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();tog(this)}"><div class="tog-text">業務継続計画未策定<small>▲10点/回</small></div><div class="pill"></div></div>
+          <div class="tog-row" role="switch" aria-checked="false" tabindex="0" data-key="s-g3" onclick="tog(this)" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();tog(this)}"><div class="tog-text">虐待防止措置未実施<small>▲5点/回</small></div><div class="pill"></div></div>
+        </div>
+      </div>
+
+      <p style="font-size:10px;color:var(--dim);margin-bottom:8px">※ 医療保険は 1点＝10円 で自己負担額を算出します。</p>
+      <button class="cbtn" onclick="calcS()">計 算 す る</button>
+    </div>
+
+  </div><!-- /ins-med -->
+
+  <!-- ════════════ 介護保険 ════════════ -->
+  <div id="ins-kai" class="panel">
+
+    <div class="card kai-focus">
+      <div class="ctitle kai-color">基本設定</div>
+      <div class="grid2">
+        <div class="f"><label class="flabel" for="i-unit">訪問看護費（単位/回）</label>
+            <select id="i-unit">
+            <option value="302" selected>30分未満 302単位</option>
+            <option value="450">30〜60分 450単位</option>
+            <option value="800">60〜90分 800単位</option>
+            <option value="290">理学療法士等 20分 290単位</option>
+          </select>
+        </div>
+        <div class="f"><label class="flabel" for="i-vc">訪問回数（月）</label>
+            <input type="number" id="i-vc" value="4" min="1" max="99" aria-describedby="i-vc-err" aria-required="true">
+          <span class="verr" id="i-vc-err" role="alert"></span>
+        </div>
+        <div class="f"><label class="flabel" for="i-tanka">地域区分（単位単価）</label>
+            <select id="i-tanka">
+            <option value="11.40">1級地 11.40円</option>
+            <option value="11.12">2級地 11.12円</option>
+            <option value="11.05">3級地 11.05円</option>
+            <option value="10.84">4級地 10.84円</option>
+            <option value="10.70">5級地 10.70円</option>
+            <option value="10.42">6級地 10.42円</option>
+            <option value="10.21">7級地 10.21円</option>
+            <option value="10.00" selected>その他 10.00円</option>
+          </select>
+        </div>
+        <div class="f"><label class="flabel" for="i-cp">負担割合</label>
+            <select id="i-cp">
+            <option value="0.1" selected>1割</option>
+            <option value="0.2">2割</option>
+            <option value="0.3">3割</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="sdiv">要介護・要支援度</div>
+      <div class="care-badges" id="careBadges" role="radiogroup" aria-label="要介護・要支援度">
+        <div class="care-badge" role="radio" aria-checked="false" tabindex="-1" data-val="s1" data-type="yoshien" onclick="selCare(this)" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();selCare(this)}">要支援1</div>
+        <div class="care-badge" role="radio" aria-checked="false" tabindex="-1" data-val="s2" data-type="yoshien" onclick="selCare(this)" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();selCare(this)}">要支援2</div>
+        <div class="care-badge on" role="radio" aria-checked="true" tabindex="0" data-val="1" data-type="yokaigo" onclick="selCare(this)" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();selCare(this)}">要介護1</div>
+        <div class="care-badge" role="radio" aria-checked="false" tabindex="-1" data-val="2" data-type="yokaigo" onclick="selCare(this)" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();selCare(this)}">要介護2</div>
+        <div class="care-badge" role="radio" aria-checked="false" tabindex="-1" data-val="3" data-type="yokaigo" onclick="selCare(this)" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();selCare(this)}">要介護3</div>
+        <div class="care-badge" role="radio" aria-checked="false" tabindex="-1" data-val="4" data-type="yokaigo" onclick="selCare(this)" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();selCare(this)}">要介護4</div>
+        <div class="care-badge" role="radio" aria-checked="false" tabindex="-1" data-val="5" data-type="yokaigo" onclick="selCare(this)" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();selCare(this)}">要介護5</div>
+      </div>
+      <p style="font-size:10px;color:var(--dim);margin-top:8px">※要支援を選択すると介護予防訪問看護の単位数に切り替わります</p>
+    </div>
+
+    <!-- 緊急時訪問看護加算（月単位・2区分） -->
+    <div class="card">
+      <div class="ctitle kai-color">緊急時訪問看護加算（月単位）</div>
+      <div class="tog-list">
+        <div class="tog-row kai" role="switch" aria-checked="false" tabindex="0" data-key="i-kin1" onclick="tog(this)" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();tog(this)}"><div class="tog-text">緊急時訪問看護加算Ⅰ<small>負担軽減体制あり ＋600単位（月1回）</small></div><div class="pill"></div></div>
+        <div class="tog-row kai" role="switch" aria-checked="false" tabindex="0" data-key="i-kin2" onclick="tog(this)" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();tog(this)}"><div class="tog-text">緊急時訪問看護加算Ⅱ<small>常時対応体制のみ ＋574単位（月1回）</small></div><div class="pill"></div></div>
+      </div>
+    </div>
+
+    <!-- 加算（回単位） -->
+    <div class="card">
+      <div class="ctitle kai-color">時間外・複数名加算（回数）</div>
+      <div class="ngrid">
+        <div class="nf"><span class="flabel"><span class="dot" style="background:var(--ora)"></span>夜間・早朝加算 ＋210単位</span><input type="number" id="i-yak" value="0" min="0"></div>
+        <div class="nf"><span class="flabel"><span class="dot" style="background:var(--acc2)"></span>深夜加算 ＋420単位</span><input type="number" id="i-shi" value="0" min="0"></div>
+        <div class="nf"><span class="flabel"><span class="dot" style="background:var(--acc)"></span>複数名訪問（看護師） ＋254単位</span><input type="number" id="i-fkK" value="0" min="0"></div>
+        <div class="nf"><span class="flabel"><span class="dot" style="background:var(--cya)"></span>複数名訪問（補助者） ＋201単位</span><input type="number" id="i-fkJ" value="0" min="0"></div>
+        <div class="nf" id="nf-cho"><span class="flabel"><span class="dot" style="background:var(--pur)"></span>長時間訪問（90分超） ＋300単位<span id="cho-note" style="display:none;color:var(--red);font-size:9px;margin-left:4px">／ 要支援非対応</span></span><input type="number" id="i-cho" value="0" min="0"></div>
+        <div class="nf"><span class="flabel"><span class="dot" style="background:var(--muted)"></span>遠隔死亡診断補助加算 ＋150単位<br><small style="font-size:9px;color:var(--dim)">離島等・研修修了看護師</small></span><input type="number" id="i-enkaku" value="0" min="0"></div>
+      </div>
+    </div>
+
+    <!-- 体制・月単位加算 -->
+    <div class="card">
+      <div class="ctitle kai-color">体制・月単位加算</div>
+      <div class="tog-list">
+        <div class="tog-row kai" data-key="i-taisei"  onclick="tog(this)"><div class="tog-text">訪問看護体制強化加算Ⅰ<small>＋600単位（月1回）</small></div><div class="pill"></div></div>
+        <div class="tog-row kai" role="switch" aria-checked="false" tabindex="0" data-key="i-taisei2" onclick="tog(this)" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();tog(this)}"><div class="tog-text">訪問看護体制強化加算Ⅱ<small>＋300単位（月1回）</small></div><div class="pill"></div></div>
+        <div class="tog-row kai" data-key="i-24h"     onclick="tog(this)"><div class="tog-text">24時間対応体制加算<small>＋6,400単位（月1回）</small></div><div class="pill"></div></div>
+        <div class="tog-row kai" data-key="i-shok1"   onclick="tog(this)"><div class="tog-text">初回加算Ⅰ<small>退院当日に初回訪問 ＋350単位（月1回）</small></div><div class="pill"></div></div>
+        <div class="tog-row kai" data-key="i-shok2"   onclick="tog(this)"><div class="tog-text">初回加算Ⅱ<small>退院翌日以降に初回訪問 ＋300単位（月1回）</small></div><div class="pill"></div></div>
+        <div class="tog-row kai" data-key="i-taiin"   onclick="tog(this)"><div class="tog-text">退院時共同指導加算<small>＋600単位（1回）</small></div><div class="pill"></div></div>
+        <div class="tog-row kai" data-key="i-toku1"   onclick="tog(this)"><div class="tog-text">特別管理加算Ⅰ（特掲疾病等）<small>＋500単位（月1回）</small></div><div class="pill"></div></div>
+        <div class="tog-row kai" data-key="i-toku2"   onclick="tog(this)"><div class="tog-text">特別管理加算Ⅱ（点滴注射等）<small>＋250単位（月1回）</small></div><div class="pill"></div></div>
+        <div class="tog-row kai" data-key="i-senmon"  onclick="tog(this)"><div class="tog-text">専門管理加算<small>専門研修修了看護師・特定行為研修修了者 ＋250単位（月1回）</small></div><div class="pill"></div></div>
+        <div class="tog-row kai" role="switch" aria-checked="false" tabindex="0" data-key="i-terminal" onclick="tog(this)" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();tog(this)}"><div class="tog-text">ターミナルケア加算<small>＋2,500単位（死亡月）</small></div><div class="pill"></div></div>
+        <div class="tog-row kai" data-key="i-ninchi"  onclick="tog(this)"><div class="tog-text">認知症専門管理加算<small>＋120単位（月1回）</small></div><div class="pill"></div></div>
+        <div class="tog-row kai" data-key="i-oral"    onclick="tog(this)"><div class="tog-text">口腔連携強化加算<small>＋100単位（月1回）</small></div><div class="pill"></div></div>
+      </div>
+    </div>
+
+    <!-- 減算 -->
+    <div class="card">
+      <div class="ctitle kai-color">減算・体制未整備</div>
+      <div class="tog-list">
+        <div class="tog-row kai" role="switch" aria-checked="false" tabindex="0" data-key="i-g1" onclick="tog(this)" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();tog(this)}"><div class="tog-text">業務継続計画未策定減算<small>▲所定単位数の1%</small></div><div class="pill"></div></div>
+        <div class="tog-row kai" role="switch" aria-checked="false" tabindex="0" data-key="i-g2" onclick="tog(this)" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();tog(this)}"><div class="tog-text">高齢者虐待防止措置未実施減算<small>▲所定単位数の1%</small></div><div class="pill"></div></div>
+        <div class="tog-row kai" role="switch" aria-checked="false" tabindex="0" data-key="i-g3" onclick="tog(this)" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();tog(this)}"><div class="tog-text">安全管理体制未実施減算<small>▲5単位/回</small></div><div class="pill"></div></div>
+        <div class="tog-row kai" role="switch" aria-checked="false" tabindex="0" data-key="i-g4" onclick="tog(this)" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();tog(this)}"><div class="tog-text">理学療法士等訪問回数超過減算<small>PT/OT/STの月訪問回数が看護職員を超過 ▲8単位/回</small></div><div class="pill"></div></div>
+      </div>
+    </div>
+
+    <button class="cbtn kai-btn" onclick="calcI()">計 算 す る</button>
+
+  </div><!-- /ins-kai -->
+
+  <!-- ════ Result ════ -->
+  <div class="rcard" id="rcard" aria-live="polite" aria-atomic="true">
+    <div class="rlabel" id="rlabel">ESTIMATED COPAY / 概算自己負担額</div>
+    <div class="rval" id="rv">— <em>円</em></div>
+    <div class="rnote" id="rn">上記ボタンを押して計算してください</div>
+    <div class="bdown" id="bd"></div>
+  </div>
+
+  <!-- PDF出力ボタン -->
+  <button class="pdf-btn" id="pdfBtn" onclick="exportPDF()">
+    ⬇ PDF として出力する（A4）
+  </button>
+
+  <!-- 保存ボタン -->
+  <button class="save-btn" id="saveBtn" onclick="saveHistory()" aria-label="この計算結果を履歴に保存">
+    ✦ この結果を保存する
+  </button>
+
+  <!-- 履歴カード -->
+  <div class="hist-card" id="histCard" aria-label="保存した計算履歴">
+    <div class="hist-title">HISTORY / 保存した計算結果</div>
+    <div id="histList"></div>
+  </div>
+
+  <!-- 免責表示 -->
+  <div class="disclaimer">
+    <strong>⚠ 免責事項 / DISCLAIMER</strong>
+    本ツールによる計算結果は、入力された条件をもとにした<strong>概算値</strong>です。実際の請求額・自己負担額は、保険者の判定・加算の算定要件・上限額管理・高額療養費制度の適用等により異なる場合があります。正式な金額については、担当のケアマネジャー・訪問看護事業所・保険者にご確認ください。本ツールの計算結果に基づく損害について、作成者は一切の責任を負いません。
+  </div>
+
+  <!-- 印刷用シート（@media print でのみ表示） -->
+  <div id="pdf-sheet"></div>
+
+</main><!-- /main-content -->
+
+<script>
+const ST = {};
+let careLevel = '1';
+
+/* ── 排他グループ定義 ── */
+const MUTEX_GROUPS = [
+  ['k-24h-i',      'k-24h-r'],
+  ['k-toku1',      'k-toku2'],
+  ['k-senmon1',    'k-senmon2'],
+  ['k-terminal-h', 'k-terminal-i'],
+  ['s-24h-i',      's-24h-r'],
+  ['s-toku1',      's-toku2'],
+  ['s-senmon1',    's-senmon2'],
+  ['s-terminal-h', 's-terminal-i'],
+  ['s-jyusho-i',   's-jyusho-r'],
+  ['i-kin1',       'i-kin2'],
+  ['i-shok1',      'i-shok2'],
+  ['i-toku1',      'i-toku2'],
+];
+
+/* ── トグル ── */
+function tog(el) {
+  el.classList.toggle('active');
+  const key = el.dataset.key;
+  ST[key] = el.classList.contains('active');
+  el.setAttribute('aria-checked', ST[key] ? 'true' : 'false');
+  // 排他グループの相手をOFFにする
+  if (ST[key]) {
+    MUTEX_GROUPS.forEach(group => {
+      if (group.includes(key)) {
+        group.forEach(k => {
+          if (k !== key) {
+            const other = document.querySelector('.tog-row[data-key="' + k + '"]');
+            if (other && other.classList.contains('active')) {
+              other.classList.remove('active');
+              other.setAttribute('aria-checked', 'false');
+              ST[k] = false;
+            }
+          }
+        });
+      }
+    });
+  }
+}
+function on(k) { return !!ST[k]; }
+
+/* ── 要介護・要支援度 ── */
+const UNITS_YOKAIGO = [
+  { value: '302', text: '30分未満 302単位', selected: true },
+  { value: '450', text: '30〜60分 450単位' },
+  { value: '800', text: '60〜90分 800単位' },
+  { value: '290', text: '理学療法士等 20分 290単位' },
+];
+const UNITS_YOSHIEN = [
+  { value: '302', text: '介護予防 30分未満 302単位', selected: true },
+  { value: '450', text: '介護予防 30〜60分 450単位' },
+  { value: '800', text: '介護予防 60〜90分 800単位' },
+  { value: '290', text: '介護予防 理学療法士等 20分 290単位' },
+];
+/* 要支援で算定不可の加算キー */
+const YOSHIEN_DISABLED_KEYS = [
+  'i-kin1','i-kin2','i-taisei','i-taisei2',
+  'i-toku1','i-toku2','i-senmon','i-terminal','i-ninchi','i-oral'
+];
+
+function applyYoshienRestriction(isYoshien) {
+  YOSHIEN_DISABLED_KEYS.forEach(key => {
+    const row = document.querySelector(`.tog-row[data-key="${key}"]`);
+    if (!row) return;
+    if (isYoshien) {
+      // OFFにしてから無効化
+      if (row.classList.contains('active')) {
+        row.classList.remove('active');
+        row.setAttribute('aria-checked', 'false');
+        ST[key] = false;
+      }
+      row.classList.add('disabled');
+      row.setAttribute('aria-disabled', 'true');
+      row.setAttribute('tabindex', '-1');
+    } else {
+      row.classList.remove('disabled');
+      row.setAttribute('aria-disabled', 'false');
+      row.setAttribute('tabindex', '0');
+    }
+  });
+  // 長時間訪問（回単位）
+  const choInput = document.getElementById('i-cho');
+  const choNote  = document.getElementById('cho-note');
+  const choNf    = document.getElementById('nf-cho');
+  if (isYoshien) {
+    choInput.value = 0;
+    choInput.disabled = true;
+    choNf.style.opacity = '0.35';
+    if (choNote) choNote.style.display = 'inline';
+  } else {
+    choInput.disabled = false;
+    choNf.style.opacity = '1';
+    if (choNote) choNote.style.display = 'none';
+  }
+}
+
+function updateUnitSelect(isYoshien) {
+  const sel = document.getElementById('i-unit');
+  const cur = sel.value;
+  const opts = isYoshien ? UNITS_YOSHIEN : UNITS_YOKAIGO;
+  sel.innerHTML = opts.map(o =>
+    `<option value="${o.value}"${o.value === cur ? ' selected' : ''}>${o.text}</option>`
+  ).join('');
+}
+function selCare(el) {
+  document.querySelectorAll('.care-badge').forEach(b => {
+    b.classList.remove('on');
+    b.setAttribute('aria-checked', 'false');
+    b.setAttribute('tabindex', '-1');
+  });
+  el.classList.add('on');
+  el.setAttribute('aria-checked', 'true');
+  el.setAttribute('tabindex', '0');
+  careLevel = el.dataset.val;
+  const isYoshien = el.dataset.type === 'yoshien';
+  updateUnitSelect(isYoshien);
+  applyYoshienRestriction(isYoshien);
+}
+
+/* ── 保険タブ切替 ── */
+function switchIns(name, btn) {
+  document.querySelectorAll('.ins-tab').forEach(b => {
+    b.classList.remove('on');
+    b.setAttribute('aria-selected', 'false');
+  });
+  btn.classList.add('on');
+  btn.setAttribute('aria-selected', 'true');
+  document.getElementById('ins-med').classList.toggle('on', name === 'med');
+  document.getElementById('ins-kai').classList.toggle('on', name === 'kai');
+  const rc = document.getElementById('rcard');
+  rc.classList.toggle('kai-mode', name === 'kai');
+  resetR();
+}
+
+/* ── サブタブ切替（医療内） ── */
+function switchSub(name, btn) {
+  document.querySelectorAll('.sub-tab').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  document.getElementById('p-k').classList.toggle('on', name === 'k');
+  document.getElementById('p-s').classList.toggle('on', name === 's');
+  resetR();
+}
+
+function resetR() {
+  document.getElementById('rv').innerHTML = '— <em>円</em>';
+  document.getElementById('rn').textContent = '上記ボタンを押して計算してください';
+  const bd = document.getElementById('bd');
+  bd.classList.remove('show');
+  bd.innerHTML = '';
+  document.getElementById('pdfBtn').classList.remove('show');
+  document.getElementById('saveBtn').classList.remove('show');
+  lastResult = null;
+}
+
+/* ── 最後の計算結果を保持（PDF用） ── */
+let lastResult = null;
+
+/* ── 結果表示 ── */
+function showResult(rows, totalUnit, unitLabel, rate, isKai) {
+  const perUnit = isKai ? parseFloat(document.getElementById('i-tanka').value) : 10;
+  // 浮動小数点誤差対策：単位単価×100を整数演算してから÷100した後に負担割合を掛け切り捨て
+  const totalYen = Math.round(totalUnit * Math.round(perUnit * 100)) / 100;
+  const copay = Math.floor(totalYen * rate);
+
+  const el = document.getElementById('rv');
+  el.classList.remove('pop');
+  void el.offsetWidth;
+  el.innerHTML = `${copay.toLocaleString('ja-JP')} <em>円</em>`;
+  el.classList.add('pop');
+
+  const noteUnit = isKai ? '単位' : '点';
+  document.getElementById('rn').textContent =
+    `合計 ${totalUnit.toLocaleString()} ${noteUnit} × ${perUnit}円 × ${Math.round(rate * 100)}割負担（概算）`;
+
+  const bd = document.getElementById('bd');
+  bd.innerHTML = '';
+  rows.forEach(r => {
+    if (r.sec) {
+      const d = document.createElement('div');
+      d.className = 'bsec';
+      d.textContent = r.sec;
+      bd.appendChild(d);
+    } else {
+      const d = document.createElement('div');
+      d.className = 'brow' + (r.pts < 0 ? ' minus' : '') + (r.pts === 0 ? ' zero' : '');
+      const sp1 = document.createElement('span');
+      sp1.textContent = r.label;
+      const sp2 = document.createElement('span');
+      sp2.className = 'v';
+      sp2.textContent = r.pts.toLocaleString('ja-JP') + ' ' + noteUnit;
+      d.appendChild(sp1);
+      d.appendChild(sp2);
+      bd.appendChild(d);
+    }
+  });
+
+  const t1 = document.createElement('div');
+  t1.className = 'brow tot';
+  const t1s1 = document.createElement('span'); t1s1.textContent = '合計' + noteUnit + '数';
+  const t1s2 = document.createElement('span'); t1s2.className = 'v'; t1s2.textContent = totalUnit.toLocaleString() + ' ' + noteUnit;
+  t1.appendChild(t1s1); t1.appendChild(t1s2);
+  bd.appendChild(t1);
+
+  const t2 = document.createElement('div');
+  t2.className = 'brow tot';
+  const acColor = isKai ? 'var(--kaigo)' : 'var(--acc)';
+  const t2s1 = document.createElement('span'); t2s1.style.color = acColor; t2s1.textContent = '自己負担概算';
+  const t2s2 = document.createElement('span'); t2s2.className = 'v'; t2s2.style.color = acColor; t2s2.textContent = copay.toLocaleString('ja-JP') + ' 円';
+  t2.appendChild(t2s1); t2.appendChild(t2s2);
+  bd.appendChild(t2);
+
+  /* 介護：区分支給限度額の目安 */
+  if (isKai) {
+    const limits = KAI_LIMITS;
+    const lim = limits[careLevel];
+    const label = careLevel === 's1' ? '要支援1' : careLevel === 's2' ? '要支援2' : `要介護${careLevel}`;
+    const pct = Math.round(totalUnit / lim * 100);
+    const info = document.createElement('div');
+    info.style.cssText = 'margin-top:10px;padding:10px 12px;background:#fef8ec;border:1px solid rgba(192,120,0,.25);border-radius:8px;font-size:11px;color:var(--muted)';
+    const infoS1 = document.createElement('span');
+    infoS1.style.cssText = "color:var(--kaigo);font-family:var(--font-mono)";
+    infoS1.textContent = '区分支給限度額';
+    const infoTxt = document.createTextNode('（' + label + '）');
+    const infoBr  = document.createElement('br');
+    const infoS2  = document.createElement('strong');
+    infoS2.style.color = 'var(--txt)';
+    infoS2.textContent = totalUnit.toLocaleString();
+    const infoS3 = document.createElement('span');
+    infoS3.style.color = pct > 100 ? 'var(--red)' : 'var(--acc)';
+    infoS3.textContent = '（' + pct + '%）';
+    info.appendChild(infoS1);
+    info.appendChild(infoTxt);
+    info.appendChild(infoBr);
+    info.appendChild(document.createTextNode(lim.toLocaleString() + ' 単位中 '));
+    info.appendChild(infoS2);
+    info.appendChild(document.createTextNode(' 単位使用 '));
+    info.appendChild(infoS3);
+    bd.appendChild(info);
+  }
+
+  bd.classList.add('show');
+  document.querySelector('.rcard').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  /* PDF ボタン・保存ボタン表示 & 結果保存 */
+  const activeInsLabel = isKai ? '介護保険' : (document.getElementById('p-s').classList.contains('on') ? '医療保険（精神科訪問看護）' : '医療保険（訪問看護）');
+  lastResult = { rows, totalUnit, unitLabel, rate, isKai, insLabel: activeInsLabel };
+  const btn = document.getElementById('pdfBtn');
+  btn.classList.add('show');
+  btn.classList.toggle('kai-pdf', isKai);
+  document.getElementById('saveBtn').classList.add('show');
+}
+
+/* ════════════════════════════════════════════════
+   履歴保存・復元
+   ════════════════════════════════════════════════ */
+const HIST_KEY = 'vnCalcHistory';
+const HIST_MAX = 3;
+
+/* 入力状態をすべてスナップショット */
+function captureState() {
+  // トグル
+  const toggles = {};
+  document.querySelectorAll('.tog-row[data-key]').forEach(el => {
+    toggles[el.dataset.key] = el.classList.contains('active');
+  });
+  // テキスト・数値・セレクト
+  const fields = {};
+  ['pt-name','pt-dob','pt-office','pt-month',
+   'k-day','k-time','k-vc','k-cp','k-kanri','k-kanri2',
+   'k-child','k-child2','k-kin','k-kin2','k-yak','k-shi','k-fkK','k-fkJ','k-cho','k-conf',
+   's-day','s-time','s-vc','s-cp','s-kanri','s-kanri2',
+   's-child','s-child2','s-kin','s-kin2','s-yak','s-shi','s-fkK','s-fkJ','s-cho','s-conf',
+   'i-unit','i-vc','i-tanka','i-cp',
+   'i-yak','i-shi','i-fkK','i-fkJ','i-cho','i-enkaku'
+  ].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) fields[id] = el.value;
+  });
+  // タブ状態
+  const insMode = document.getElementById('ins-kai').classList.contains('on') ? 'kai' : 'med';
+  const subMode = document.getElementById('p-s') && document.getElementById('p-s').classList.contains('on') ? 's' : 'k';
+  // 要介護度
+  return { toggles, fields, insMode, subMode, careLevel };
+}
+
+/* スナップショットを復元して再計算 */
+function restoreState(snap) {
+  // タブ
+  const insTabMed = document.querySelector('.ins-tab.med');
+  const insTabKai = document.querySelector('.ins-tab.kai');
+  if (snap.insMode === 'kai') {
+    switchIns('kai', insTabKai);
+  } else {
+    switchIns('med', insTabMed);
+    const subBtns = document.querySelectorAll('.sub-tab');
+    if (snap.subMode === 's') {
+      switchSub('s', subBtns[1]);
+    } else {
+      switchSub('k', subBtns[0]);
+    }
+  }
+  // フィールド
+  Object.entries(snap.fields).forEach(([id, val]) => {
+    const el = document.getElementById(id);
+    if (el) el.value = val;
+  });
+  // 要介護度バッジ
+  const badge = document.querySelector(`.care-badge[data-val="${snap.careLevel}"]`);
+  if (badge) selCare(badge);
+  // トグル（一旦全OFF後に復元）
+  document.querySelectorAll('.tog-row[data-key]').forEach(el => {
+    const key = el.dataset.key;
+    const shouldOn = !!snap.toggles[key];
+    const isOn = el.classList.contains('active');
+    if (shouldOn !== isOn) tog(el);
+  });
+  // 再計算
+  if (snap.insMode === 'kai') {
+    calcI();
+  } else if (snap.subMode === 's') {
+    calcS();
+  } else {
+    calcK();
+  }
+  document.getElementById('rcard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/* 保存 */
+function saveHistory() {
+  if (!lastResult) return;
+  const snap = captureState();
+  const now = new Date();
+  const label = lastResult.insLabel;
+  const perUnit = lastResult.isKai ? parseFloat(document.getElementById('i-tanka').value) : 10;
+  const totalYen = Math.round(lastResult.totalUnit * Math.round(perUnit * 100)) / 100;
+  const copay = Math.floor(totalYen * lastResult.rate);
+  const entry = {
+    id: now.getTime(),
+    date: now.getFullYear() + '/' + String(now.getMonth()+1).padStart(2,'0') + '/' + String(now.getDate()).padStart(2,'0') + ' ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0'),
+    label,
+    copay,
+    totalUnit: lastResult.totalUnit,
+    isKai: lastResult.isKai,
+    ptName: document.getElementById('pt-name').value.trim(),
+    snap
+  };
+  let hist = loadHistData();
+  hist.unshift(entry);
+  if (hist.length > HIST_MAX) hist = hist.slice(0, HIST_MAX);
+  try {
+    localStorage.setItem(HIST_KEY, JSON.stringify(hist));
+  } catch(e) {
+    console.warn('履歴保存失敗:', e);
+  }
+  renderHistory();
+  // ボタンを一時的に「保存済み」表示
+  const btn = document.getElementById('saveBtn');
+  btn.textContent = '✓ 保存しました';
+  btn.style.borderColor = 'var(--acc)';
+  btn.style.color = 'var(--acc)';
+  setTimeout(() => {
+    btn.textContent = '✦ この結果を保存する';
+    btn.style.borderColor = '';
+    btn.style.color = '';
+  }, 1800);
+}
+
+/* localStorage から読み込み */
+function loadHistData() {
+  try {
+    return JSON.parse(localStorage.getItem(HIST_KEY) || '[]');
+  } catch(e) { return []; }
+}
+
+/* 削除 */
+function deleteHistory(id, e) {
+  e.stopPropagation();
+  let hist = loadHistData().filter(h => h.id !== id);
+  try { localStorage.setItem(HIST_KEY, JSON.stringify(hist)); } catch(e) {}
+  renderHistory();
+}
+
+/* 履歴リスト描画 */
+function renderHistory() {
+  const hist = loadHistData();
+  const list = document.getElementById('histList');
+  list.textContent = '';
+  if (hist.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'hist-empty';
+    empty.textContent = '保存された履歴はありません';
+    list.appendChild(empty);
+    return;
+  }
+  const ul = document.createElement('div');
+  ul.className = 'hist-list';
+  hist.forEach(h => {
+    const item = document.createElement('div');
+    item.className = 'hist-item' + (h.isKai ? ' kai-hist' : '');
+    item.setAttribute('role', 'button');
+    item.setAttribute('tabindex', '0');
+    item.setAttribute('aria-label', h.label + ' ' + h.copay.toLocaleString() + '円 ' + h.date + ' を復元');
+    item.onclick = () => restoreState(h.snap);
+    item.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); restoreState(h.snap); }};
+
+    const body = document.createElement('div');
+    body.className = 'hist-body';
+
+    const meta = document.createElement('div');
+    meta.className = 'hist-meta';
+    meta.textContent = h.date + '　' + h.label + (h.ptName ? '　' + h.ptName : '');
+
+    const copayDiv = document.createElement('div');
+    copayDiv.className = 'hist-copay';
+    copayDiv.textContent = h.copay.toLocaleString();
+    const em = document.createElement('em');
+    em.textContent = '円';
+    copayDiv.appendChild(em);
+
+    body.appendChild(meta);
+    body.appendChild(copayDiv);
+
+    const del = document.createElement('button');
+    del.className = 'hist-del';
+    del.setAttribute('aria-label', '履歴を削除');
+    del.textContent = '×';
+    del.onclick = e => deleteHistory(h.id, e);
+
+    item.appendChild(body);
+    item.appendChild(del);
+    ul.appendChild(item);
+  });
+  list.appendChild(ul);
+}
+
+/* 起動時に履歴を描画 */
+renderHistory();
+
+/* ════════════════════════════════════════════════
+   診療報酬・介護単位数マスタ（2024年度改定対応）
+   改定時はこのブロックのみ更新してください
+   ════════════════════════════════════════════════ */
+
+/* 医療：基本療養費（点） */
+const BASE_MED = {
+  k_w3: { '30u': 4250, '30o': 8890,  '60o': 11830 },
+  k_w4: { '30u': 4250, '30o': 9980,  '60o': 13230 },
+  s_w3: { '30u': 4250, '30o': 8010,  '60o':  9430 },
+  s_w4: { '30u': 4250, '30o': 9960,  '60o': 11800 }
+};
+
+/* 医療：減算（点/回） */
+const MED_GENSAN = { g1: -50, g2: -10, g3: -5 };
+
+/* 医療：回単位加算（点） */
+const MED_KAI_加算 = {
+  child:  1300,  // 乳幼児（通常）
+  child2: 1800,  // 乳幼児（重症児等：超重症児・別表7・8）
+  kin:    2650,  // 緊急訪問 イ（月14日目まで）
+  kin2:   2000,  // 緊急訪問 ロ（月15日目以降）
+  yak:    2100,
+  shi:    4200,
+  fkK:    3000,
+  fkJ:    1000,
+  cho:    5200,
+};
+
+/* 医療：月単位加算 — 訪問看護（点） */
+const MED_K_TSUKI = [
+  { k: 'k-toku1',       pts:  500,  l: '特別管理加算Ⅰ 500点' },
+  { k: 'k-toku2',       pts:  250,  l: '特別管理加算Ⅱ 250点' },
+  { k: 'k-senmon1',     pts: 2500,  l: '専門管理加算Ⅰ 2,500点' },
+  { k: 'k-senmon2',     pts: 1000,  l: '専門管理加算Ⅱ 1,000点' },
+  { k: 'k-taiin',       pts:  600,  l: '退院時共同指導加算 600点' },
+  { k: 'k-taiinsp',     pts: 2000,  l: '特別管理指導加算 2,000点' },
+  { k: 'k-taishin',     pts: 6000,  l: '退院支援指導加算 6,000点' },
+  { k: 'k-renkei',      pts: 3000,  l: '在宅患者連携指導加算 3,000点' },
+  // k-conf は回数入力のため calcK 内で直接処理
+  { k: 'k-kaigorenkei', pts:  250,  l: '看護・介護職員連携強化加算 250点' },
+  { k: 'k-joho',        pts: 1500,  l: '訪問看護情報提供療養費 1,500点' },
+  { k: 'k-shok',        pts: 3000,  l: '初回加算 3,000点' },
+  { k: 'k-ninch',       pts:  250,  l: '認知症専門管理加算 250点' },
+  { k: 'k-dx',          pts:    5,  l: '訪問看護医療DX情報活用加算 5点' },
+  { k: 'k-terminal-h',  pts: 25000, l: 'ターミナルケア療養費（在宅死亡）25,000点' },
+  { k: 'k-terminal-i',  pts: 10000, l: 'ターミナルケア療養費（施設死亡）10,000点' },
+  { k: 'k-24h-i',       pts: 6800,  l: '24時間対応体制加算 イ 6,800点' },
+  { k: 'k-24h-r',       pts: 6520,  l: '24時間対応体制加算 ロ 6,520点' },
+];
+
+/* 医療：月単位加算 — 精神科（点） */
+const MED_S_TSUKI = [
+  { k: 's-shok',        pts: 3000,  l: '初回加算 3,000点' },
+  { k: 's-taiin',       pts:  600,  l: '退院時共同指導加算 600点' },
+  { k: 's-taiinsp',     pts: 2000,  l: '特別管理指導加算 2,000点' },
+  { k: 's-taishin',     pts: 6000,  l: '退院支援指導加算 6,000点' },
+  { k: 's-toku1',       pts:  500,  l: '特別管理加算Ⅰ 500点' },
+  { k: 's-toku2',       pts:  250,  l: '特別管理加算Ⅱ 250点' },
+  { k: 's-stoku',       pts:  250,  l: '精神科特別管理加算 250点' },
+  { k: 's-senmon1',     pts: 2500,  l: '専門管理加算Ⅰ 2,500点' },
+  { k: 's-senmon2',     pts: 1000,  l: '専門管理加算Ⅱ 1,000点' },
+  { k: 's-renkei',      pts: 3000,  l: '在宅患者連携指導加算 3,000点' },
+  // s-conf は回数入力のため calcS 内で直接処理
+  { k: 's-kaigorenkei', pts:  250,  l: '看護・介護職員連携強化加算 250点' },
+  { k: 's-jyusho-i',    pts:  840,  l: '精神科重症患者支援管理連携加算 イ 840点' },
+  { k: 's-jyusho-r',    pts:  580,  l: '精神科重症患者支援管理連携加算 ロ 580点' },
+  { k: 's-joho',        pts: 1500,  l: '訪問看護情報提供療養費 1,500点' },
+  { k: 's-dx',          pts:    5,  l: '訪問看護医療DX情報活用加算 5点' },
+  { k: 's-terminal-h',  pts: 25000, l: 'ターミナルケア療養費（在宅死亡）25,000点' },
+  { k: 's-terminal-i',  pts: 10000, l: 'ターミナルケア療養費（施設死亡）10,000点' },
+  { k: 's-24h-i',       pts: 6800,  l: '24時間対応体制加算 イ 6,800点' },
+  { k: 's-24h-r',       pts: 6520,  l: '24時間対応体制加算 ロ 6,520点' },
+];
+
+/* 介護：回単位加算（単位） */
+const KAI_KAI_加算 = {
+  yak:     210,
+  shi:     420,
+  fkK:     254,
+  fkJ:     201,
+  cho:     300,
+  enkaku:  150,  // 遠隔死亡診断補助加算（離島等・研修修了看護師）
+};
+
+/* 介護：月単位加算（単位） */
+const KAI_TSUKI = [
+  { k: 'i-kin1',    pts:  600, l: '緊急時訪問看護加算Ⅰ 600単位' },
+  { k: 'i-kin2',    pts:  574, l: '緊急時訪問看護加算Ⅱ 574単位' },
+  { k: 'i-taisei',  pts:  600, l: '体制強化加算Ⅰ 600単位' },
+  { k: 'i-taisei2', pts:  300, l: '体制強化加算Ⅱ 300単位' },
+  { k: 'i-24h',     pts: 6400, l: '24時間対応体制加算 6,400単位' },
+  { k: 'i-shok1',   pts:  350, l: '初回加算Ⅰ（退院当日）350単位' },
+  { k: 'i-shok2',   pts:  300, l: '初回加算Ⅱ（退院翌日以降）300単位' },
+  { k: 'i-taiin',   pts:  600, l: '退院時共同指導加算 600単位' },
+  { k: 'i-toku1',   pts:  500, l: '特別管理加算Ⅰ 500単位' },
+  { k: 'i-toku2',   pts:  250, l: '特別管理加算Ⅱ 250単位' },
+  { k: 'i-senmon',  pts:  250, l: '専門管理加算 250単位' },
+  { k: 'i-terminal',pts: 2500, l: 'ターミナルケア加算 2,500単位' },
+  { k: 'i-ninchi',  pts:  120, l: '認知症専門管理加算 120単位' },
+  { k: 'i-oral',    pts:  100, l: '口腔連携強化加算 100単位' },
+];
+
+/* 介護：区分支給限度額（単位）2024年度確定値 */
+const KAI_LIMITS = { s1: 5032, s2: 10531, 1: 16692, 2: 19705, 3: 27048, 4: 30938, 5: 36217 };
+
+/* ════════════════════════════════════════════════ */
+const g     = id => document.getElementById(id);
+const gs    = id => g(id).value;
+const clamp = (v, max) => Math.min(Math.max(v, 0), max);
+
+/* ── 入力バリデーション ── */
+function validateInt(id, { min = 0, max = 999, required = false } = {}) {
+  const el  = g(id);
+  const raw = el.value.trim();
+  const num = parseInt(raw, 10);
+  const errEl = el.parentElement.querySelector('.verr');
+
+  const setErr = msg => {
+    el.classList.add('err');
+    if (errEl) { errEl.textContent = msg; errEl.classList.add('show'); }
+    return null;
+  };
+  const clearErr = () => {
+    el.classList.remove('err');
+    if (errEl) errEl.classList.remove('show');
+    return num;
+  };
+
+  if (raw === '' || isNaN(num)) return required ? setErr('数値を入力してください') : (el.classList.remove('err'), errEl && errEl.classList.remove('show'), 0);
+  if (!Number.isInteger(parseFloat(raw))) return setErr('整数で入力してください');
+  if (num < min) return setErr(`${min}以上の値を入力してください`);
+  if (num > max) return setErr(`${max}以下の値を入力してください`);
+  return clearErr();
+}
+
+function clearAllErr(prefix) {
+  document.querySelectorAll(`[id^="${prefix}"]`).forEach(el => {
+    el.classList.remove('err');
+    const e = el.parentElement && el.parentElement.querySelector('.verr');
+    if (e) e.classList.remove('show');
+  });
+}
+
+/* ── 訪問看護（医療） ── */
+function calcK() {
+  clearAllErr('k-');
+  if (on('k-24h-i') && on('k-24h-r')) {
+    alert('24時間対応体制加算 イ と ロ は同時に算定できません。どちらか一方を選択してください。');
+    return;
+  }
+  if (on('k-toku1') && on('k-toku2')) {
+    alert('特別管理加算Ⅰ と Ⅱ は同時に算定できません。どちらか一方を選択してください。');
+    return;
+  }
+  if (on('k-senmon1') && on('k-senmon2')) {
+    alert('専門管理加算Ⅰ と Ⅱ は同時に算定できません。どちらか一方を選択してください。');
+    return;
+  }
+  if (on('k-terminal-h') && on('k-terminal-i')) {
+    alert('ターミナルケア療養費（在宅）と（施設）は同時に算定できません。どちらか一方を選択してください。');
+    return;
+  }
+  const vc = validateInt('k-vc', { min: 1, max: 99, required: true });
+  if (vc === null) return;
+
+  const kinV  = validateInt('k-kin',   { min: 0, max: vc });
+  const kin2V = validateInt('k-kin2',  { min: 0, max: vc });
+  const yakV  = validateInt('k-yak',   { min: 0, max: vc });
+  const shiV  = validateInt('k-shi',   { min: 0, max: vc });
+  const fkKV  = validateInt('k-fkK',  { min: 0, max: vc });
+  const fkJV  = validateInt('k-fkJ',  { min: 0, max: vc });
+  const choV  = validateInt('k-cho',   { min: 0, max: vc });
+  const childV  = validateInt('k-child',  { min: 0, max: vc });
+  const child2V = validateInt('k-child2', { min: 0, max: vc });
+  if ([kinV,kin2V,yakV,shiV,fkKV,fkJV,choV,childV,child2V].includes(null)) return;
+
+  const base = BASE_MED['k_' + gs('k-day')][gs('k-time')];
+  const rate = parseFloat(gs('k-cp'));
+  const kanri1 = parseInt(gs('k-kanri'));
+  const kanri2 = parseInt(gs('k-kanri2'));
+  const confV  = validateInt('k-conf', { min: 0, max: 2 }) || 0;
+  let total = 0, rows = [];
+
+  rows.push({ sec: '訪問看護管理療養費' });
+  rows.push({ label: `管理療養費（月初日）`, pts: kanri1 });
+  total += kanri1;
+  const kanri2pts = kanri2 * Math.max(0, vc - 1);
+  rows.push({ label: `管理療養費（2日目以降）${kanri2}点×${Math.max(0,vc-1)}日`, pts: kanri2pts });
+  total += kanri2pts;
+
+  rows.push({ sec: '基本療養費' });
+  const bp = base * vc;
+  rows.push({ label: `基本療養費 ${base}点×${vc}回`, pts: bp });
+  total += bp;
+
+  rows.push({ sec: '減算' });
+  let gp = 0;
+  if (on('k-g1')) gp += MED_GENSAN.g1;
+  if (on('k-g2')) gp += MED_GENSAN.g2;
+  if (on('k-g3')) gp += MED_GENSAN.g3;
+  const gpts = gp * vc;
+  rows.push({ label: `減算合計 ${gp === 0 ? 'なし' : gp + '点/回×' + vc + '回'}`, pts: gpts });
+  total += gpts;
+
+  rows.push({ sec: '回単位加算' });
+  [
+    { label: `乳幼児加算（通常）${MED_KAI_加算.child}点×${childV}回`,              pts: MED_KAI_加算.child  * childV },
+    { label: `乳幼児加算（重症児等）${MED_KAI_加算.child2}点×${child2V}回`,        pts: MED_KAI_加算.child2 * child2V },
+    { label: `緊急訪問加算 イ ${MED_KAI_加算.kin}点×${kinV}回`,                   pts: MED_KAI_加算.kin  * kinV },
+    { label: `緊急訪問加算 ロ ${MED_KAI_加算.kin2}点×${kin2V}回`,                 pts: MED_KAI_加算.kin2 * kin2V },
+    { label: `夜間訪問加算 ${MED_KAI_加算.yak.toLocaleString()}点×${yakV}回`,      pts: MED_KAI_加算.yak * yakV },
+    { label: `深夜訪問加算 ${MED_KAI_加算.shi.toLocaleString()}点×${shiV}回`,      pts: MED_KAI_加算.shi * shiV },
+    { label: `複数名（看護師）${MED_KAI_加算.fkK.toLocaleString()}点×${fkKV}回`,   pts: MED_KAI_加算.fkK * fkKV },
+    { label: `複数名（補助者）${MED_KAI_加算.fkJ.toLocaleString()}点×${fkJV}回`,   pts: MED_KAI_加算.fkJ * fkJV },
+    { label: `長時間訪問加算 ${MED_KAI_加算.cho.toLocaleString()}点×${choV}回`,    pts: MED_KAI_加算.cho * choV },
+  ].forEach(r => { rows.push(r); total += r.pts; });
+
+  rows.push({ sec: '月単位加算' });
+  MED_K_TSUKI.forEach(({ k, pts, l, maxCount }) => {
+    const v = on(k) ? pts * (maxCount || 1) : 0;
+    const label = maxCount && on(k) ? `${l}×${maxCount}回` : l;
+    rows.push({ label, pts: v });
+    total += v;
+  });
+  // カンファレンス加算（回数入力）
+  const confPts = 200 * confV;
+  rows.push({ label: `在宅患者緊急時等カンファレンス加算 200点×${confV}回`, pts: confPts });
+  total += confPts;
+
+  showResult(rows, Math.max(0, total), '点', rate, false);
+}
+
+/* ── 精神科（医療） ── */
+function calcS() {
+  clearAllErr('s-');
+  if (on('s-24h-i') && on('s-24h-r')) {
+    alert('24時間対応体制加算 イ と ロ は同時に算定できません。どちらか一方を選択してください。');
+    return;
+  }
+  if (on('s-toku1') && on('s-toku2')) {
+    alert('特別管理加算Ⅰ と Ⅱ は同時に算定できません。どちらか一方を選択してください。');
+    return;
+  }
+  if (on('s-senmon1') && on('s-senmon2')) {
+    alert('専門管理加算Ⅰ と Ⅱ は同時に算定できません。どちらか一方を選択してください。');
+    return;
+  }
+  if (on('s-terminal-h') && on('s-terminal-i')) {
+    alert('ターミナルケア療養費（在宅）と（施設）は同時に算定できません。どちらか一方を選択してください。');
+    return;
+  }
+  if (on('s-jyusho-i') && on('s-jyusho-r')) {
+    alert('精神科重症患者支援管理連携加算 イ と ロ は同時に算定できません。どちらか一方を選択してください。');
+    return;
+  }
+  const vc = validateInt('s-vc', { min: 1, max: 99, required: true });
+  if (vc === null) return;
+
+  const kinV   = validateInt('s-kin',   { min: 0, max: vc });
+  const kin2V  = validateInt('s-kin2',  { min: 0, max: vc });
+  const yakV   = validateInt('s-yak',   { min: 0, max: vc });
+  const shiV   = validateInt('s-shi',   { min: 0, max: vc });
+  const fkKV   = validateInt('s-fkK',  { min: 0, max: vc });
+  const fkJV   = validateInt('s-fkJ',  { min: 0, max: vc });
+  const choV   = validateInt('s-cho',   { min: 0, max: vc });
+  const childV  = validateInt('s-child',  { min: 0, max: vc });
+  const child2V = validateInt('s-child2', { min: 0, max: vc });
+  if ([kinV,kin2V,yakV,shiV,fkKV,fkJV,choV,childV,child2V].includes(null)) return;
+
+  const base = BASE_MED['s_' + gs('s-day')][gs('s-time')];
+  const rate = parseFloat(gs('s-cp'));
+  const kanri1 = parseInt(gs('s-kanri'));
+  const kanri2 = parseInt(gs('s-kanri2'));
+  const confV  = validateInt('s-conf', { min: 0, max: 2 }) || 0;
+  let total = 0, rows = [];
+
+  rows.push({ sec: '訪問看護管理療養費' });
+  rows.push({ label: `管理療養費（月初日）`, pts: kanri1 });
+  total += kanri1;
+  const kanri2pts = kanri2 * Math.max(0, vc - 1);
+  rows.push({ label: `管理療養費（2日目以降）${kanri2}点×${Math.max(0,vc-1)}日`, pts: kanri2pts });
+  total += kanri2pts;
+
+  rows.push({ sec: '基本療養費' });
+  const bp = base * vc;
+  rows.push({ label: `基本療養費 ${base}点×${vc}回`, pts: bp });
+  total += bp;
+
+  rows.push({ sec: '減算' });
+  let gp = 0;
+  if (on('s-g1')) gp += MED_GENSAN.g1;
+  if (on('s-g2')) gp += MED_GENSAN.g2;
+  if (on('s-g3')) gp += MED_GENSAN.g3;
+  const gpts = gp * vc;
+  rows.push({ label: `減算合計 ${gp === 0 ? 'なし' : gp + '点/回×' + vc + '回'}`, pts: gpts });
+  total += gpts;
+
+  rows.push({ sec: '回単位加算' });
+  [
+    { label: `乳幼児加算（通常）${MED_KAI_加算.child}点×${childV}回`,              pts: MED_KAI_加算.child  * childV },
+    { label: `乳幼児加算（重症児等）${MED_KAI_加算.child2}点×${child2V}回`,        pts: MED_KAI_加算.child2 * child2V },
+    { label: `緊急訪問加算 イ ${MED_KAI_加算.kin}点×${kinV}回`,                   pts: MED_KAI_加算.kin  * kinV },
+    { label: `緊急訪問加算 ロ ${MED_KAI_加算.kin2}点×${kin2V}回`,                 pts: MED_KAI_加算.kin2 * kin2V },
+    { label: `夜間訪問加算 ${MED_KAI_加算.yak.toLocaleString()}点×${yakV}回`,      pts: MED_KAI_加算.yak * yakV },
+    { label: `深夜訪問加算 ${MED_KAI_加算.shi.toLocaleString()}点×${shiV}回`,      pts: MED_KAI_加算.shi * shiV },
+    { label: `複数名（看護師）${MED_KAI_加算.fkK.toLocaleString()}点×${fkKV}回`,   pts: MED_KAI_加算.fkK * fkKV },
+    { label: `複数名（補助者）${MED_KAI_加算.fkJ.toLocaleString()}点×${fkJV}回`,   pts: MED_KAI_加算.fkJ * fkJV },
+    { label: `長時間訪問加算 ${MED_KAI_加算.cho.toLocaleString()}点×${choV}回`,    pts: MED_KAI_加算.cho * choV },
+  ].forEach(r => { rows.push(r); total += r.pts; });
+
+  rows.push({ sec: '月単位加算' });
+  MED_S_TSUKI.forEach(({ k, pts, l, maxCount }) => {
+    const v = on(k) ? pts * (maxCount || 1) : 0;
+    const label = maxCount && on(k) ? `${l}×${maxCount}回` : l;
+    rows.push({ label, pts: v });
+    total += v;
+  });
+  // カンファレンス加算（回数入力）
+  const confPts = 200 * confV;
+  rows.push({ label: `在宅患者緊急時等カンファレンス加算 200点×${confV}回`, pts: confPts });
+  total += confPts;
+
+  showResult(rows, Math.max(0, total), '点', rate, false);
+}
+
+/* ── 介護保険 ── */
+function calcI() {
+  clearAllErr('i-');
+  // 緊急時訪問看護加算Ⅰ・Ⅱ 同時算定不可チェック
+  if (on('i-kin1') && on('i-kin2')) {
+    alert('緊急時訪問看護加算Ⅰ と Ⅱ は同時に算定できません。どちらか一方を選択してください。');
+    return;
+  }
+  // 初回加算Ⅰ・Ⅱ 同時算定不可チェック
+  if (on('i-shok1') && on('i-shok2')) {
+    alert('初回加算Ⅰ と Ⅱ は同時に算定できません。どちらか一方を選択してください。');
+    return;
+  }
+  // 特別管理加算Ⅰ・Ⅱ 同時算定不可チェック
+  if (on('i-toku1') && on('i-toku2')) {
+    alert('特別管理加算Ⅰ と Ⅱ は同時に算定できません。どちらか一方を選択してください。');
+    return;
+  }
+  const vc = validateInt('i-vc', { min: 1, max: 99, required: true });
+  if (vc === null) return;
+
+  const yakV    = validateInt('i-yak',    { min: 0, max: vc });
+  const shiV    = validateInt('i-shi',    { min: 0, max: vc });
+  const fkKV    = validateInt('i-fkK',   { min: 0, max: vc });
+  const fkJV    = validateInt('i-fkJ',   { min: 0, max: vc });
+  const choEl   = document.getElementById('i-cho');
+  const choV    = choEl.disabled ? 0 : validateInt('i-cho',    { min: 0, max: vc });
+  const enkakuV = validateInt('i-enkaku', { min: 0, max: vc });
+  if ([yakV,shiV,fkKV,fkJV,choV,enkakuV].includes(null)) return;
+
+  const unitPer = parseInt(gs('i-unit'));
+  const rate    = parseFloat(gs('i-cp'));
+  let total = 0, rows = [];
+
+  rows.push({ sec: '基本単位数' });
+  const bp = unitPer * vc;
+  rows.push({ label: `訪問看護費 ${unitPer}単位×${vc}回`, pts: bp });
+  total += bp;
+
+  rows.push({ sec: '減算' });
+  let genPct = 0, genFlat = 0;
+  if (on('i-g1')) genPct += 0.01;
+  if (on('i-g2')) genPct += 0.01;
+  if (on('i-g3')) genFlat += 5;
+  if (on('i-g4')) genFlat += 8;  // 理学療法士等訪問回数超過減算
+  // 浮動小数点誤差対策：%減算は単位数×割合を整数演算
+  const genPts = -(Math.floor(Math.round(bp * genPct * 1000) / 1000) + genFlat * vc);
+  rows.push({ label: `減算（%減＋固定） ${genPts === 0 ? 'なし' : ''}`, pts: genPts });
+  total += genPts;
+
+  rows.push({ sec: '回単位加算' });
+  [
+    { label: `夜間・早朝加算 ${KAI_KAI_加算.yak}単位×${yakV}回`,        pts: KAI_KAI_加算.yak    * yakV },
+    { label: `深夜加算 ${KAI_KAI_加算.shi}単位×${shiV}回`,              pts: KAI_KAI_加算.shi    * shiV },
+    { label: `複数名訪問（看護師）${KAI_KAI_加算.fkK}単位×${fkKV}回`,   pts: KAI_KAI_加算.fkK   * fkKV },
+    { label: `複数名訪問（補助者）${KAI_KAI_加算.fkJ}単位×${fkJV}回`,   pts: KAI_KAI_加算.fkJ   * fkJV },
+    { label: `長時間訪問加算 ${KAI_KAI_加算.cho}単位×${choV}回`,        pts: KAI_KAI_加算.cho    * choV },
+    { label: `遠隔死亡診断補助加算 ${KAI_KAI_加算.enkaku}単位×${enkakuV}回`, pts: KAI_KAI_加算.enkaku * enkakuV },
+  ].forEach(r => { rows.push(r); total += r.pts; });
+
+  rows.push({ sec: '月単位加算' });
+  KAI_TSUKI.forEach(({ k, pts, l }) => { const v = on(k) ? pts : 0; rows.push({ label: l, pts: v }); total += v; });
+
+  showResult(rows, Math.max(0, total), '単位', rate, true);
+}
+
+/* ── PDF出力 ── */
+function exportPDF() {
+  if (!lastResult) return;
+  const { rows, totalUnit, unitLabel, rate, isKai } = lastResult;
+  const perUnit = isKai ? parseFloat(document.getElementById('i-tanka').value) : 10;
+  // 浮動小数点誤差対策
+  const totalYen = Math.round(totalUnit * Math.round(perUnit * 100)) / 100;
+  const copay   = Math.floor(totalYen * rate);
+  const now     = new Date();
+  const dateStr = `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日 ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
+  const insLabel = lastResult.insLabel || (isKai ? '介護保険' : '医療保険');
+  const noteUnit = isKai ? '単位' : '点';
+  const acHex    = isKai ? '#b07800' : '#1a7a4a';
+
+  // ── ヘルパー：textContent で安全にテキストノードを作る ──
+  function mkEl(tag, cls, text) {
+    const el = document.createElement(tag);
+    if (cls) el.className = cls;
+    if (text !== undefined) el.textContent = text;
+    return el;
+  }
+  function mkRow(labelText, valText, cls) {
+    const d = mkEl('div', 'ps-patient-row');
+    const s1 = mkEl('span', null, labelText);
+    const s2 = mkEl('span', null, valText);
+    if (cls) d.classList.add(cls);
+    d.appendChild(s1); d.appendChild(s2);
+    return d;
+  }
+
+  // 利用者・事業所情報（DOM構築 — escHtml 不要）
+  const ptName   = document.getElementById('pt-name').value.trim();
+  const ptDob    = document.getElementById('pt-dob').value.trim();
+  const ptOffice = document.getElementById('pt-office').value.trim();
+  const ptMonth  = document.getElementById('pt-month').value.trim();
+
+  // 明細行を2カラムに分割
+  const dataRows = rows.filter(r => !r.sec);
+  const half     = Math.ceil(dataRows.length / 2);
+  const left     = dataRows.slice(0, half);
+  const right    = dataRows.slice(half);
+  const secMap   = {};
+  let curSec = '';
+  rows.forEach(r => { if (r.sec) curSec = r.sec; else secMap[r.label] = curSec; });
+
+  function renderColDom(arr) {
+    const frag = document.createDocumentFragment();
+    let lastSec = '';
+    arr.forEach(r => {
+      const sec = secMap[r.label] || '';
+      if (sec !== lastSec) {
+        frag.appendChild(mkEl('div', 'ps-sec', sec));
+        lastSec = sec;
+      }
+      const cls = 'ps-row' + (r.pts < 0 ? ' minus' : r.pts === 0 ? ' zero' : '');
+      const row = mkEl('div', cls);
+      row.appendChild(mkEl('span', null, r.label));
+      const pv = mkEl('span', 'pv', r.pts.toLocaleString() + ' ' + noteUnit);
+      row.appendChild(pv);
+      frag.appendChild(row);
+    });
+    return frag;
+  }
+
+  // シート構築
+  const sheet = document.getElementById('pdf-sheet');
+  sheet.textContent = ''; // 既存内容を安全にクリア
+
+  // ヘッダー
+  const psHeader = mkEl('div', 'ps-header');
+  const psTitle  = mkEl('div', 'ps-title', '訪問看護 ');
+  const psTitleSpan = mkEl('span', null, '自己負担額 概算計算書');
+  psTitle.appendChild(psTitleSpan);
+  const psMeta = mkEl('div', 'ps-meta', insLabel + ' ／ 算出日時：' + dateStr + ' ／ 2024年度診療報酬改定対応');
+  psHeader.appendChild(psTitle);
+  psHeader.appendChild(psMeta);
+  sheet.appendChild(psHeader);
+
+  // ボディ
+  const psBody = mkEl('div', 'ps-body');
+
+  // 利用者情報
+  if (ptName || ptDob || ptOffice || ptMonth) {
+    const pat = mkEl('div', 'ps-patient');
+    if (ptName)   pat.appendChild(mkRow('利用者名',       ptName));
+    if (ptDob)    pat.appendChild(mkRow('生年月日/年齢',  ptDob));
+    if (ptOffice) pat.appendChild(mkRow('事業所名',       ptOffice));
+    if (ptMonth)  pat.appendChild(mkRow('対象年月',       ptMonth));
+    psBody.appendChild(pat);
+  }
+
+  // 明細2カラム
+  const colL = mkEl('div', 'ps-col'); colL.appendChild(renderColDom(left));
+  const colR = mkEl('div', 'ps-col'); colR.appendChild(renderColDom(right));
+  psBody.appendChild(colL);
+  psBody.appendChild(colR);
+
+  // 合計行
+  const psTotal = mkEl('div', 'ps-total');
+  const psTotalLabel = mkEl('span', 'ps-total-label',
+    '合計' + noteUnit + '数： ' + totalUnit.toLocaleString() + ' ' + noteUnit + '　×　' + perUnit + '円　×　' + Math.round(rate*100) + '割負担');
+  const psTotalVal = mkEl('span', 'ps-total-val' + (isKai ? ' kai' : ''), copay.toLocaleString() + ' 円');
+  psTotal.appendChild(psTotalLabel);
+  psTotal.appendChild(psTotalVal);
+  psBody.appendChild(psTotal);
+
+  psBody.appendChild(mkEl('div', 'ps-subnote', '※ 上記は概算です。実際の自己負担額は高額療養費・上限額管理等により異なる場合があります。'));
+
+  // 限度額（介護のみ）
+  if (isKai) {
+    const lim  = KAI_LIMITS[careLevel];
+    const lbl  = careLevel==='s1'?'要支援1':careLevel==='s2'?'要支援2':'要介護'+careLevel;
+    const pct  = Math.round(totalUnit / lim * 100);
+    const over = pct > 100 ? ' ⚠ 限度額超過' : '';
+    const limDiv = mkEl('div', 'ps-limit',
+      '区分支給限度額（' + lbl + '）: ' + lim.toLocaleString() + ' ' + noteUnit + ' 中 ' +
+      totalUnit.toLocaleString() + ' ' + noteUnit + ' 使用（' + pct + '%）' + over);
+    psBody.appendChild(limDiv);
+  }
+
+  // 免責
+  const disc = mkEl('div', 'ps-disc');
+  const discStrong = mkEl('strong', null, '⚠ 免責事項');
+  disc.appendChild(discStrong);
+  disc.appendChild(document.createTextNode(
+    '本計算書は入力条件をもとにした概算であり、正式な請求額を保証するものではありません。実際の負担額は保険者の判定・算定要件・各種制度の適用により異なります。正式な金額は担当ケアマネジャー・訪問看護事業所・保険者にご確認ください。'
+  ));
+  psBody.appendChild(disc);
+  psBody.appendChild(mkEl('div', 'ps-footer', '訪問看護 保険計算 統合版（2024年度改定対応）'));
+
+  sheet.appendChild(psBody);
+  window.print();
+}
+
+</script>
+
+<script>
+/* ══════════════════════════════════════════
+   PWA: Service Worker + インストール促進
+   ══════════════════════════════════════════ */
+
+// ── オフライン検知 ──
+const offlineBar = document.getElementById('offline-bar');
+function updateOnlineStatus() {
+  offlineBar.classList.toggle('show', !navigator.onLine);
+}
+window.addEventListener('online',  updateOnlineStatus);
+window.addEventListener('offline', updateOnlineStatus);
+updateOnlineStatus();
+
+// ── Service Worker 登録 ──
+let swReg = null;
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./service-worker.js')
+      .then(reg => {
+        swReg = reg;
+        console.log('[PWA] SW registered:', reg.scope);
+        // 新バージョン検出時にトースト表示
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              document.getElementById('sw-toast').classList.add('show');
+            }
+          });
+        });
+      })
+      .catch(err => console.warn('[PWA] SW registration failed:', err));
+  });
+}
+
+function swUpdate() {
+  document.getElementById('sw-toast').classList.remove('show');
+  if (swReg && swReg.waiting) {
+    swReg.waiting.postMessage('skipWaiting');
+  }
+  // コントローラー変更後にリロード
+  navigator.serviceWorker.addEventListener('controllerchange', () => location.reload());
+  location.reload();
+}
+
+// ── A2HS（Add to Home Screen）インストールバナー ──
+let deferredPrompt = null;
+const banner     = document.getElementById('pwa-banner');
+const installBtn = document.getElementById('pwa-install-btn');
+const closeBtn   = document.getElementById('pwa-close-btn');
+
+// インストール済み or ユーザーが既に閉じた場合はバナーを出さない
+const bannerDismissed = localStorage.getItem('pwa-banner-dismissed');
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  if (!bannerDismissed) {
+    // 少し遅らせて表示（UX上の慣例）
+    setTimeout(() => banner.classList.add('show'), 1500);
+  }
+});
+
+installBtn.addEventListener('click', async () => {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  const { outcome } = await deferredPrompt.userChoice;
+  console.log('A2HS outcome:', outcome);
+  deferredPrompt = null;
+  banner.classList.remove('show');
+  localStorage.setItem('pwa-banner-dismissed', '1');
+});
+
+closeBtn.addEventListener('click', () => {
+  banner.classList.remove('show');
+  localStorage.setItem('pwa-banner-dismissed', '1');
+});
+
+// インストール完了後はバナーを隠す
+window.addEventListener('appinstalled', () => {
+  banner.classList.remove('show');
+  deferredPrompt = null;
+  console.log('PWA installed successfully.');
+});
+</script>
+
+</body>
+</html>
